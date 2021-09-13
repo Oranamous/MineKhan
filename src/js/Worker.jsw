@@ -168,7 +168,7 @@ function Worker() {
 	}
 
 	let noise
-	const smooth = 0.02
+	const smooth = 0.015
 	const caveSize = 0.0055
 	function isCave(x, y, z) {
 		// Generate a 3D rigid multifractal noise shell.

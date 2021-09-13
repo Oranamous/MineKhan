@@ -209,7 +209,7 @@ async function MineKhan() {
 		extra: 30, // Extra height added to the world.
 		caveSize: 0.00 // Redefined right above where it's used
 	}
-	let maxHeight = 255
+	let maxHeight = 256
 	let blockOutlines = false
 	let blockFill = true
 	let updateHUD = true
@@ -1846,7 +1846,7 @@ async function MineKhan() {
 		constructor(empty) {
 			if (!empty) {
 				setSeed(Math.random() * 2000000000 | 0)
-				p.y = superflat ? 6 : round(noiseProfile.noise(8 * generator.smooth, 8 * generator.smooth) * generator.height) + 2 + generator.extra
+				p.y = superflat ? 4 : floor(noiseProfile.noise(0.04, 0.04) * 180) + 64
 			}
 
 			generatedChunks = 0
@@ -1869,34 +1869,6 @@ async function MineKhan() {
 			this.entities = []
 			this.eventQueue = []
 			this.lastChunk = ","
-		}
-		genChunk(chunk) {
-			let trueX = chunk.x
-			let trueZ = chunk.z
-
-			if (chunk.generated) {
-				return false
-			}
-
-			let smoothness = generator.smooth
-			let hilliness = generator.height
-			let gen = 0
-			for (let i = 0; i < 16; i++) {
-				for (let k = 0; k < 16; k++) {
-					gen = superflat ? 4 : round(noiseProfile.noise((trueX + i) * smoothness, (trueZ + k) * smoothness) * hilliness) + generator.extra
-					chunk.tops[k * 16 + i] = gen
-
-					chunk.setBlock(i, gen, k, blockIds.grass)
-					chunk.setBlock(i, gen - 1, k, blockIds.dirt)
-					chunk.setBlock(i, gen - 2, k, blockIds.dirt)
-					chunk.setBlock(i, gen - 3, k, blockIds.dirt)
-					for (let j = 1; j < gen - 3; j++) {
-						chunk.setBlock(i, j, k, blockIds.stone)
-					}
-					chunk.setBlock(i, 0, k, blockIds.bedrock)
-				}
-			}
-			chunk.generated = true
 		}
 		getAdjacentSubchunks(x, y, z, lights) {
 			let minChunkX = x - 16 >> 4
@@ -2219,7 +2191,8 @@ async function MineKhan() {
 
 				if (this.generateQueue.length && !doneWork) {
 					let chunk = this.generateQueue.pop()
-					this.genChunk(chunk)
+					chunk.genChunk(superflat)
+					debug("Generate")
 					doneWork = true
 				}
 
@@ -2231,6 +2204,7 @@ async function MineKhan() {
 					}
 					else if (!chunk.populated) {
 						chunk.populate(trees)
+						debug("Populate")
 						this.populateQueue.pop()
 					}
 					doneWork = true

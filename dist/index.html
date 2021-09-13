@@ -270,18 +270,16 @@ window.quota = document.getElementById("quota")
 window.hoverbox = document.getElementById("onhover")
 window.canvas.width  = window.innerWidth
 window.canvas.height = window.innerHeight
+window.controlMap = {}
 
-/* Set this text editor to max width by copying this into the JS console:
-document.getElementsByClassName("_1chbfei")[0].setAttribute('style', 'max-width: 100vw !important')
-*/
 async function MineKhan() {
-	const { canvas, ctx, savebox, boxCenterTop, saveDirections, message, quota, hoverbox, loadString } = window
+	// Cache user-defined globals
+	const { canvas, ctx, savebox, boxCenterTop, saveDirections, message, quota, hoverbox, loadString, controlMap } = window
 
-	// cache Math object
-	const { Math, performance, Date, document } = window;
-	const { cos, sin, round, floor, min, max, abs, sqrt } = Math;
-	const win = window.parent;
-	const { console } = win;
+	// cache global objects locally.
+	const { Math, performance, Date, document, console } = window
+	const { cos, sin, round, floor, min, max, abs, sqrt } = Math
+	const win = window.parent
 	const chatOutput = document.getElementById("chat")
 	const chatInput = document.getElementById("chatbar")
 	let now = Date.now()
@@ -305,7 +303,7 @@ async function MineKhan() {
 		window.pendingWorkers = [] // Array of promises; can be awaited with Promise.race()
 		let jobId = 1
 		const pendingJobs = new Map()
-		for (let i = 0, count = (navigator.hardwareConcurrency || 4) - 1; i < count; i++) {
+		for (let i = 0, count = (navigator.hardwareConcurrency || 4) - 1 || 1; i < count; i++) { // Generate between 1 and (processors - 1) workers.
 			let worker = new Worker(workerURL)
 			worker.onmessage = e => {
 				let [promise, resolve] = pendingJobs.get(e.data.jobId)
@@ -343,8 +341,7 @@ async function MineKhan() {
 		}
 	}
 
-	let world
-	let worldSeed
+	let world, worldSeed
 
 	function setSeed(seed) {
 		worldSeed = seed
@@ -442,7 +439,7 @@ async function MineKhan() {
 		extra: 30, // Extra height added to the world.
 		caveSize: 0.00 // Redefined right above where it's used
 	}
-	let maxHeight = 255
+	let maxHeight = 256
 	let blockOutlines = false
 	let blockFill = true
 	let updateHUD = true
@@ -592,7 +589,6 @@ async function MineKhan() {
 		y: 0,
 		z: 0,
 	}
-	let place
 	let inventory = {
 		hotbar: [1, 2, 3, 4, 5, 6, 7, 8, 9],
 		main: [],
@@ -600,11 +596,53 @@ async function MineKhan() {
 		size: 40 * min(width, height) / 600,
 		holding: 0,
 	}
+
+	function setControl(name, key, shift = false, ctrl = false, alt = false) {
+		controlMap[name] = {
+			key,
+			shift,
+			ctrl,
+			alt,
+			get pressed() {
+				return Boolean(Key[this.key]
+					&& (!this.shift || Key.ShiftLeft || Key.ShiftRight)
+					&& (!this.ctrl || Key.ControlLeft || Key.ControlRight)
+					&& (!this.alt || Key.AltLeft || Key.AltRight))
+			},
+			// Check to see if all of an event's data matches this key map
+			event(e) {
+				return Boolean(e.code === this.key
+					&& (!this.shift || e.shiftKey)
+					&& (!this.ctrl || e.ctrlKey)
+					&& (!this.alt || e.altKey))
+			}
+		}
+	}
+	setControl("jump", "Space")
+	setControl("walkForwards", "KeyW")
+	setControl("strafeLeft", "KeyA")
+	setControl("walkBackwards", "KeyS")
+	setControl("strafeRight", "KeyD")
+	setControl("sprint", "KeyQ")
+	setControl("openInventory", "KeyE")
+	setControl("openChat", "KeyT")
+	setControl("pause", "KeyP")
+	setControl("hyperBuilder", "KeyH")
+	setControl("superBreaker", "KeyB")
+	setControl("toggleSpectator", "KeyL")
+	setControl("zoom", "KeyZ")
+	setControl("cycleBlockShapes", "Enter")
+	setControl("sneak", "ShiftLeft")
+	setControl("dropItem", "Backspace")
+	setControl("breakBlock", "leftMouse")
+	setControl("placeBlock", "rightMouse")
+	setControl("pickBlock", "middleMouse")
 	//}
 
 	function play() {
 		canvas.onblur()
 		p.lastBreak = now
+		holding = inventory.hotbar[inventory.hotbarSlot]
 		updateHUD = true
 		use3d()
 		gl.clearColor(sky[0], sky[1], sky[2], 1.0)
@@ -1455,7 +1493,6 @@ async function MineKhan() {
 					if (maxY - py > 0.5 || !p.onGround) {
 						p.canStepX = false
 						p.x = x + face[0] + (vx < 0 ? p.w : -p.w) * 1.001
-						console.log("No step!")
 					}
 					col = true
 				}
@@ -1483,7 +1520,6 @@ async function MineKhan() {
 					if (maxY - py > 0.5 || !p.onGround) {
 						p.canStepZ = false
 						p.z = z + face[2] + (vz < 0 ? p.w : -p.w) * 1.001
-						console.log("No step!")
 					}
 					col = true
 				}
@@ -1637,7 +1673,7 @@ async function MineKhan() {
 			p.velocity.y = -p.maxYVelocity
 		}
 		if(p.onGround) {
-			if(Key[" "]) {
+			if(controlMap.jump.pressed) {
 				p.velocity.y = p.jumpSpeed
 				p.onGround = false
 			}
@@ -2040,7 +2076,7 @@ async function MineKhan() {
 		constructor(empty) {
 			if (!empty) {
 				setSeed(Math.random() * 2000000000 | 0)
-				p.y = superflat ? 6 : round(_js_random_js__WEBPACK_IMPORTED_MODULE_8__["noiseProfile"].noise(8 * generator.smooth, 8 * generator.smooth) * generator.height) + 2 + generator.extra
+				p.y = superflat ? 4 : floor(_js_random_js__WEBPACK_IMPORTED_MODULE_8__["noiseProfile"].noise(0.04, 0.04) * 180) + 64
 			}
 
 			generatedChunks = 0
@@ -2063,34 +2099,6 @@ async function MineKhan() {
 			this.entities = []
 			this.eventQueue = []
 			this.lastChunk = ","
-		}
-		genChunk(chunk) {
-			let trueX = chunk.x
-			let trueZ = chunk.z
-
-			if (chunk.generated) {
-				return false
-			}
-
-			let smoothness = generator.smooth
-			let hilliness = generator.height
-			let gen = 0
-			for (let i = 0; i < 16; i++) {
-				for (let k = 0; k < 16; k++) {
-					gen = superflat ? 4 : round(_js_random_js__WEBPACK_IMPORTED_MODULE_8__["noiseProfile"].noise((trueX + i) * smoothness, (trueZ + k) * smoothness) * hilliness) + generator.extra
-					chunk.tops[k * 16 + i] = gen
-
-					chunk.setBlock(i, gen, k, _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockIds"].grass)
-					chunk.setBlock(i, gen - 1, k, _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockIds"].dirt)
-					chunk.setBlock(i, gen - 2, k, _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockIds"].dirt)
-					chunk.setBlock(i, gen - 3, k, _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockIds"].dirt)
-					for (let j = 1; j < gen - 3; j++) {
-						chunk.setBlock(i, j, k, _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockIds"].stone)
-					}
-					chunk.setBlock(i, 0, k, _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockIds"].bedrock)
-				}
-			}
-			chunk.generated = true
 		}
 		getAdjacentSubchunks(x, y, z, lights) {
 			let minChunkX = x - 16 >> 4
@@ -2375,10 +2383,10 @@ async function MineKhan() {
 				this.chunkGenQueue.sort(sortChunks)
 			}
 
-			if (Key.leftMouse && !Key.control && (p.lastBreak < now - 250 || p.autoBreak) && screen === "play") {
+			if (controlMap.breakBlock.pressed && (p.lastBreak < now - 250 || p.autoBreak) && screen === "play") {
 				changeWorldBlock(0)
 			}
-			if ((Key.rightMouse || Key.leftMouse && Key.control) && (p.lastPlace < now - 250 || p.autoBuild)) {
+			if (controlMap.placeBlock.pressed && (p.lastPlace < now - 250 || p.autoBuild)) {
 				newWorldBlock()
 			}
 
@@ -2413,7 +2421,8 @@ async function MineKhan() {
 
 				if (this.generateQueue.length && !doneWork) {
 					let chunk = this.generateQueue.pop()
-					this.genChunk(chunk)
+					chunk.genChunk(superflat)
+					debug("Generate")
 					doneWork = true
 				}
 
@@ -2425,6 +2434,7 @@ async function MineKhan() {
 					}
 					else if (!chunk.populated) {
 						chunk.populate(trees)
+						debug("Populate")
 						this.populateQueue.pop()
 					}
 					doneWork = true
@@ -2734,20 +2744,20 @@ async function MineKhan() {
 		move.x = 0
 		move.z = 0
 
-		if(Key.w) move.z += p.speed
-		if(Key.s) move.z -= p.speed
-		if(Key.a) move.x += p.speed
-		if(Key.d) move.x -= p.speed
+		if(controlMap.walkForwards.pressed) move.z += p.speed
+		if(controlMap.walkBackwards.pressed) move.z -= p.speed
+		if(controlMap.strafeLeft.pressed) move.x += p.speed
+		if(controlMap.strafeRight.pressed) move.x -= p.speed
 		if (p.flying) {
-			if(Key[" "]) p.velocity.y += 0.1
-			if(Key.shift) p.velocity.y -= 0.1
+			if(controlMap.jump.pressed) p.velocity.y += 0.1
+			if(controlMap.sneak.pressed) p.velocity.y -= 0.1
 		}
-		if(Key.arrowleft) p.ry -= 0.15
-		if(Key.arrowright) p.ry += 0.15
-		if(Key.arrowup) p.rx += 0.15
-		if(Key.arrowdown) p.rx -= 0.15
+		if(Key.ArrowLeft) p.ry -= 0.15
+		if(Key.ArrowRight) p.ry += 0.15
+		if(Key.ArrowUp) p.rx += 0.15
+		if(Key.ArrowDown) p.rx -= 0.15
 
-		if (!p.sprinting && Key.q && !p.sneaking && Key.w) {
+		if (!p.sprinting && controlMap.sprint.pressed && !p.sneaking && controlMap.walkForwards.pressed) {
 			p.FOV(settings.fov + 10, 250)
 			p.sprinting = true
 		}
@@ -3408,6 +3418,122 @@ async function MineKhan() {
 			Slider.drag()
 		}
 	}
+
+	// For user controls that react immediately in the event handlers.
+	function controlEvent(name, event) {
+		if (name === controlMap.cycleBlockShapes.key) {
+			blockMode = blockMode === CUBE ? SLAB : blockMode === SLAB ? STAIR : CUBE
+			updateHUD = true
+		}
+
+		if(screen === "play") {
+			if (document.pointerLockElement !== canvas) {
+				getPointer()
+				p.lastBreak = now
+			}
+			else {
+				if (name === controlMap.breakBlock.key) {
+					changeWorldBlock(0)
+				}
+
+				// holding = inventory.hotbar[inventory.hotbarSlot]
+				if(name === controlMap.placeBlock.key && holding) {
+					newWorldBlock()
+				}
+
+				if (name === controlMap.pickBlock && hitBox.pos) {
+					updateHUD = true
+					let block = world.getBlock(hitBox.pos[0], hitBox.pos[1], hitBox.pos[2]) & 0x3ff
+					let index = inventory.hotbar.indexOf(block)
+					if (index >= 0) {
+						inventory.hotbarSlot = index
+					}
+					else {
+						inventory.hotbar[inventory.hotbarSlot] = block
+					}
+				}
+
+				if(name === controlMap.pause.key) {
+					releasePointer()
+					changeScene("pause")
+				}
+
+				if (name === controlMap.openChat.key) {
+					event.preventDefault()
+					changeScene("chat")
+				}
+
+				if(name === controlMap.superBreaker.key) {
+					p.autoBreak = !p.autoBreak
+					updateHUD = true
+				}
+
+				if(name === controlMap.hyperBuilder.key) {
+					p.autoBuild = !p.autoBuild
+					updateHUD = true
+				}
+
+				if (name === controlMap.jump.key && !p.spectator) {
+					if (now < p.lastJump + 400) {
+						p.flying = !p.flying
+					}
+					else {
+						p.lastJump = now
+					}
+				}
+
+				if (name === controlMap.zoom.key) {
+					p.FOV(10, 300)
+				}
+
+				if (name === controlMap.sneak.key && !p.flying) {
+					p.sneaking = true
+					if (p.sprinting) {
+						p.FOV(settings.fov, 100)
+					}
+					p.sprinting = false
+					p.speed = 0.05
+					p.bottomH = 1.32
+				}
+
+				if (name === controlMap.toggleSpectator.key) {
+					p.spectator = !p.spectator
+					p.flying = true
+					p.onGround = false
+					updateHUD = true
+				}
+
+				if (name === controlMap.openInventory.key) {
+					changeScene("inventory")
+					releasePointer()
+				}
+
+				if (name === "Semicolon") {
+					releasePointer()
+					freezeFrame = true
+				}
+
+				if (name === controlMap.dropItem.key) {
+					let d = p.direction
+					world.entities.push(new _js_item_js__WEBPACK_IMPORTED_MODULE_18__["Item"](p.x, p.y, p.z, d.x/4, d.y/4, d.z/4, holding || inventory.hotbar[inventory.hotbarSlot], glExtensions, gl, glCache, indexBuffer, world, p))
+				}
+			}
+		}
+		else if (screen === "pause" && name === controlMap.pause.key) {
+			play()
+		}
+		else if (screen === "inventory") {
+			if (name === "leftMouse") {
+				clickInv()
+			}
+			if (name === controlMap.openInventory.key) {
+				play()
+			}
+			if (name === controlMap.cycleBlockShapes.key) {
+				drawScreens.inventory()
+			}
+		}
+	}
 	document.onmousemove = trackMouse
 	document.onpointerlockchange = function() {
 		if (document.pointerLockElement === canvas) {
@@ -3428,191 +3554,75 @@ async function MineKhan() {
 		mouseX = e.x
 		mouseY = e.y
 		mouseDown = true
-		let block, index
+		let name
 		switch(e.button) {
 			case 0:
-				Key.leftMouse = true
+				if (Key.ControlRight || Key.ControlLeft) name = "rightMouse"
+				else name = "leftMouse"
 				break
 			case 1:
-				Key.middleMouse = true
-				if (!hitBox.pos) break
-				updateHUD = true
-				block = world.getBlock(hitBox.pos[0], hitBox.pos[1], hitBox.pos[2]) & 0x3ff
-				index = inventory.hotbar.indexOf(block)
-				if (index >= 0) {
-					inventory.hotbarSlot = index
-				}
-				else {
-					inventory.hotbar[inventory.hotbarSlot] = block
-				}
+				name = "middleMouse"
 				break
 			case 2:
-				Key.rightMouse = true
+				name = "rightMouse"
 				break
 		}
-		if(screen === "play") {
-			if (document.pointerLockElement !== canvas) {
-				getPointer()
-				p.lastBreak = now
-			}
-			else {
-				place = false
-				if(e.button === 0) {
-					if(Key.control) {
-						place = true
-					}
-					else {
-						changeWorldBlock(0)
-					}
-				}
-				holding = inventory.hotbar[inventory.hotbarSlot]
-				if(e.button === 2 && holding) {
-					place = true
-				}
-				if(place) {
-					newWorldBlock()
-				}
-			}
-		}
-		else if (screen === "inventory") {
-			clickInv()
-		}
+		Key[name] = true
+		controlEvent(name)
 
 		Button.click()
 		Slider.click()
 	}
 	canvas.onmouseup = function(e) {
+		let name
 		switch(e.button) {
 			case 0:
-				Key.leftMouse = false
+				if (Key.ControlRight || Key.ControlLeft) name = "rightMouse"
+				else name = "leftMouse"
 				break
 			case 1:
-				Key.middleMouse = false
+				name = "middleMouse"
 				break
 			case 2:
-				Key.rightMouse = false
+				name = "rightMouse"
 				break
 		}
+		Key[name] = false
 		mouseDown = false
 		Slider.release()
 	}
 	canvas.onkeydown = function(e) {
-		let k = e.key.toLowerCase()
-		if (k === " " || k === "arrowdown" || k === "arrowup") {
+		let code = e.code
+		if (code === "Space" || code === "ArrowDown" || code === "ArrowUp") {
 			e.preventDefault()
 		}
-		if (e.repeat || Key[k]) {
+		if (e.repeat || Key[code]) {
 			return
 		}
-		Key[k] = true
+		Key[code] = true
 
-		if (k === "enter") {
-			blockMode = blockMode === CUBE ? SLAB : blockMode === SLAB ? STAIR : CUBE
+		controlEvent(code, e)
+
+		if (screen === "play" && Number(e.key)) {
+			inventory.hotbarSlot = e.key - 1
+			holding = inventory.hotbar[inventory.hotbarSlot]
 			updateHUD = true
-		}
-
-		if (screen === "play") {
-			if(k === "p") {
-				releasePointer()
-				changeScene("pause")
-			}
-
-			if (k === "t") {
-				// initTextures()
-				e.preventDefault()
-				changeScene("chat")
-			}
-
-			if(k === "b") {
-				p.autoBreak = !p.autoBreak
-				updateHUD = true
-			}
-			if(k === "h") {
-				p.autoBuild = !p.autoBuild
-				updateHUD = true
-			}
-
-			if (k === " " && !p.spectator) {
-				if (now < p.lastJump + 400) {
-					p.flying ^= true
-				}
-				else {
-					p.lastJump = now
-				}
-			}
-
-			if (k === "z") {
-				p.FOV(10, 300)
-			}
-
-			if (k === "shift" && !p.flying) {
-				p.sneaking = true
-				if (p.sprinting) {
-					p.FOV(settings.fov, 100)
-				}
-				p.sprinting = false
-				p.speed = 0.05
-				p.bottomH = 1.32
-			}
-
-			if (k === "l") {
-				p.spectator = !p.spectator
-				p.flying = true
-				p.onGround = false
-				updateHUD = true
-			}
-
-			if (k === "e") {
-				changeScene("inventory")
-				releasePointer()
-			}
-
-			if (k === ";") {
-				releasePointer()
-				freezeFrame = true
-			}
-
-			if (Key.backspace) {
-				let d = p.direction
-				world.entities.push(new _js_item_js__WEBPACK_IMPORTED_MODULE_18__["Item"](p.x, p.y, p.z, d.x/4, d.y/4, d.z/4, holding || inventory.hotbar[inventory.hotbarSlot], glExtensions, gl, glCache, indexBuffer, world, p))
-			}
-
-			if(Number(k)) {
-				inventory.hotbarSlot = Number(k) - 1
-				holding = inventory.hotbar[inventory.hotbarSlot]
-				updateHUD = true
-			}
-		}
-		else if (screen === "pause") {
-			if(k === "p") {
-				play()
-			}
-		}
-		else if (screen === "inventory") {
-			if (k === "e") {
-				play()
-			}
-			if (k === "enter") {
-				drawScreens.inventory()
-			}
 		}
 	}
 	canvas.onkeyup = function(e) {
-		let k = e.key.toLowerCase()
-		Key[k] = false
-		if(k === "escape" && (screen === "chat" || screen === "pause" || screen === "inventory" || screen === "options" && previousScreen === "pause") && now > unpauseDelay) {
+		Key[e.code] = false
+		if(e.code === "Escape" && (screen === "chat" || screen === "pause" || screen === "inventory" || screen === "options" && previousScreen === "pause") && now > unpauseDelay) {
 			play()
 		}
 		if (screen === "play") {
-			if (k === "z") {
+			if (e.code === controlMap.zoom.key) {
 				p.FOV(settings.fov, 300)
 			}
 
-			if (k === "shift" && p.sneaking) {
+			if (e.code === controlMap.sneak.key && p.sneaking) {
 				p.sneaking = false
 				p.speed = 0.11
 				p.bottomH = 1.62
-				// p.y += 0.3
 			}
 		}
 	}
@@ -4600,7 +4610,7 @@ __webpack_require__.r(__webpack_exports__);
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("function Worker() {\n\tconst { abs, floor } = Math\n\n\tfunction openSimplexNoise(clientSeed) {\n\t\tconst toNums = function(s) {\n\t\t\treturn s.split(\",\").map(function(s) {\n\t\t\t\treturn new Uint8Array(s.split(\"\").map(function(v) {\n\t\t\t\t\treturn Number(v)\n\t\t\t\t}))\n\t\t\t})\n\t\t}\n\t\tconst decode = function(m, r, s) {\n\t\t\treturn new Int8Array(s.split(\"\").map(function(v) {\n\t\t\t\treturn parseInt(v, r) + m\n\t\t\t}))\n\t\t}\n\t\tconst toNumsB32 = function(s) {\n\t\t\treturn s.split(\",\").map(function(s) {\n\t\t\t\treturn parseInt(s, 32)\n\t\t\t})\n\t\t}\n\t\tconst NORM_3D = 1.0 / 206.0\n\t\tconst SQUISH_3D = 1 / 3\n\t\tconst STRETCH_3D = -1 / 6\n\t\tvar base3D = toNums(\"0000110010101001,2110210120113111,110010101001211021012011\")\n\t\tconst gradients3D = decode(-11, 23, \"0ff7mf7fmmfffmfffm07f70f77mm7ff0ff7m0f77m77f0mf7fm7ff0077707770m77f07f70\")\n\t\tvar lookupPairs3D = function() {\n\t\t\treturn new Uint16Array(toNumsB32(\"0,2,1,1,2,2,5,1,6,0,7,0,10,2,12,2,41,1,45,1,50,5,51,5,g6,0,g7,0,h2,4,h6,4,k5,3,k7,3,l0,5,l1,5,l2,4,l5,3,l6,4,l7,3,l8,d,l9,d,la,c,ld,e,le,c,lf,e,m8,k,ma,i,p9,l,pd,n,q8,k,q9,l,15e,j,15f,m,16a,i,16e,j,19d,n,19f,m,1a8,f,1a9,h,1aa,f,1ad,h,1ae,g,1af,g,1ag,b,1ah,a,1ai,b,1al,a,1am,9,1an,9,1bg,b,1bi,b,1eh,a,1el,a,1fg,8,1fh,8,1qm,9,1qn,9,1ri,7,1rm,7,1ul,6,1un,6,1vg,8,1vh,8,1vi,7,1vl,6,1vm,7,1vn,6\"))\n\t\t}\n\t\tvar p3D = decode(-1, 5, \"112011210110211120110121102132212220132122202131222022243214231243124213241324123222113311221213131221123113311112202311112022311112220342223113342223311342223131322023113322023311320223113320223131322203311322203131\")\n\t\tconst setOf = function(count) {\n\t\t\tvar a = [], i = 0;\n\t\t\twhile (i < count) {\n\t\t\t\ta.push(i++)\n\t\t\t}\n\t\t\treturn a\n\t\t}\n\t\tconst doFor = function(count, cb) {\n\t\t\tvar i = 0;\n\t\t\twhile (i < count && cb(i++) !== true);\n\t\t}\n\n\t\tfunction shuffleSeed(seed,count){\n\t\t\tseed = seed * 1664525 + 1013904223 | 0\n\t\t\tcount -= 1\n\t\t\treturn count > 0 ? shuffleSeed(seed, count) : seed\n\t\t}\n\t\tconst types = {\n\t\t\t_3D : {\n\t\t\t\tbase : base3D,\n\t\t\t\tsquish : SQUISH_3D,\n\t\t\t\tdimensions : 3,\n\t\t\t\tpD : p3D,\n\t\t\t\tlookup : lookupPairs3D,\n\t\t\t}\n\t\t}\n\n\t\tfunction createContribution(type, baseSet, index) {\n\t\t\tvar i = 0\n\t\t\tconst multiplier = baseSet[index ++]\n\t\t\tconst c = { next : undefined }\n\t\t\twhile(i < type.dimensions) {\n\t\t\t\tconst axis = \"xyzw\"[i]\n\t\t\t\tc[axis + \"sb\"] = baseSet[index + i]\n\t\t\t\tc[\"d\" + axis] = - baseSet[index + i++] - multiplier * type.squish\n\t\t\t}\n\t\t\treturn c\n\t\t}\n\n\t\tfunction createLookupPairs(lookupArray, contributions){\n\t\t\tvar i\n\t\t\tconst a = lookupArray()\n\t\t\tconst res = new Map()\n\t\t\tfor (i = 0; i < a.length; i += 2) {\n\t\t\t\tres.set(a[i], contributions[a[i + 1]]);\n\t\t\t}\n\t\t\treturn res\n\t\t}\n\n\t\tfunction createContributionArray(type) {\n\t\t\tconst conts = []\n\t\t\tconst d = type.dimensions\n\t\t\tconst baseStep = d * d\n\t\t\tvar k, i = 0\n\t\t\twhile (i < type.pD.length) {\n\t\t\t\tconst baseSet = type.base[type.pD[i]]\n\t\t\t\tlet previous, current\n\t\t\t\tk = 0\n\t\t\t\tdo {\n\t\t\t\t\tcurrent = createContribution(type, baseSet, k)\n\t\t\t\t\tif (!previous) {\n\t\t\t\t\t\tconts[i / baseStep] = current;\n\t\t\t\t\t}\n\t\t\t\t\telse {\n\t\t\t\t\t\tprevious.next = current;\n\t\t\t\t\t}\n\t\t\t\t\tprevious = current\n\t\t\t\t\tk += d + 1\n\t\t\t\t} while(k < baseSet.length)\n\n\t\t\t\tcurrent.next = createContribution(type, type.pD, i + 1)\n\t\t\t\tif (d >= 3) {\n\t\t\t\t\tcurrent.next.next = createContribution(type, type.pD, i + d + 2)\n\t\t\t\t}\n\t\t\t\tif (d === 4) {\n\t\t\t\t\tcurrent.next.next.next = createContribution(type, type.pD, i + 11)\n\t\t\t\t}\n\t\t\t\ti += baseStep\n\t\t\t}\n\t\t\tconst result = [conts, createLookupPairs(type.lookup, conts)]\n\t\t\ttype.base = undefined\n\t\t\ttype.lookup = undefined\n\t\t\treturn result\n\t\t}\n\n\t\tlet temp = createContributionArray(types._3D)\n\t\tconst lookup3D = temp[1]\n\t\tconst perm = new Uint8Array(256)\n\t\tconst perm3D = new Uint8Array(256)\n\t\tconst source = new Uint8Array(setOf(256))\n\t\tvar seed = shuffleSeed(clientSeed, 3)\n\t\tdoFor(256, function(i) {\n\t\t\ti = 255 - i\n\t\t\tseed = shuffleSeed(seed, 1)\n\t\t\tvar r = (seed + 31) % (i + 1)\n\t\t\tr += r < 0 ? i + 1 : 0\n\t\t\tperm[i] = source[r]\n\t\t\tperm3D[i] = perm[i] % 24 * 3\n\t\t\tsource[r] = source[i]\n\t\t})\n\t\tbase3D = undefined\n\t\tlookupPairs3D = undefined\n\t\tp3D = undefined\n\n\t\treturn function(x, y, z) {\n\t\t\tconst pD = perm3D\n\t\t\tconst p = perm\n\t\t\tconst g = gradients3D\n\t\t\tconst stretchOffset = (x + y + z) * STRETCH_3D\n\t\t\tconst xs = x + stretchOffset, ys = y + stretchOffset, zs = z + stretchOffset\n\t\t\tconst xsb = floor(xs), ysb = floor(ys), zsb = floor(zs)\n\t\t\tconst squishOffset\t= (xsb + ysb + zsb) * SQUISH_3D\n\t\t\tconst dx0 = x - (xsb + squishOffset), dy0 = y - (ysb + squishOffset), dz0 = z - (zsb + squishOffset)\n\t\t\tconst xins = xs - xsb, yins = ys - ysb, zins = zs - zsb\n\t\t\tconst inSum = xins + yins + zins\n\t\t\tvar c = lookup3D.get(\n\t\t\t\tyins - zins + 1\n\t\t\t\t\t| xins - yins + 1 << 1\n\t\t\t\t\t| xins - zins + 1 << 2\n\t\t\t\t\t| inSum << 3\n\t\t\t\t\t| inSum + zins << 5\n\t\t\t\t\t| inSum + yins << 7\n\t\t\t\t\t| inSum + xins << 9\n\t\t\t)\n\t\t\tvar i, value = 0\n\t\t\twhile (c !== undefined) {\n\t\t\t\tconst dx = dx0 + c.dx, dy = dy0 + c.dy, dz = dz0 + c.dz\n\t\t\t\tlet attn = 2 - dx * dx - dy * dy - dz * dz\n\t\t\t\tif (attn > 0) {\n\t\t\t\t\ti = pD[(p[xsb + c.xsb & 0xFF] + (ysb + c.ysb) & 0xFF) + (zsb + c.zsb) & 0xFF]\n\t\t\t\t\tattn *= attn\n\t\t\t\t\tvalue += attn * attn * (g[i++] * dx + g[i++] * dy + g[i] * dz)\n\t\t\t\t}\n\t\t\t\tc = c.next\n\t\t\t}\n\t\t\treturn value * NORM_3D + 0.5\n\t\t}\n\t}\n\n\tlet noise\n\tconst smooth = 0.02\n\tconst caveSize = 0.0055\n\tfunction isCave(x, y, z) {\n\t\t// Generate a 3D rigid multifractal noise shell.\n\t\t// Then generate another one with different coordinates.\n\t\t// Overlay them on top of each other, and the overlapping parts should form a cave-like structure.\n\t\t// This is extremely slow, and requires generating 2 noise values for every single block in the world.\n\t\t// TODO: replace with a crawler system of some sort, that will never rely on a head position in un-generated chunks.\n\n\t\tlet cave1 = abs(0.5 - noise(x * smooth, y * smooth, z * smooth)) < caveSize\n\t\tlet cave2 = abs(0.5 - noise(y * smooth, z * smooth, x * smooth)) < caveSize\n\t\treturn cave1 && cave2\n\t}\n\n\tconst subChunk = new Int8Array(16 * 16 * 16)\n\tself.onmessage = function(e) {\n\n\t\tif (e.data && e.data.seed) {\n\t\t\tnoise = openSimplexNoise(e.data.seed)\n\t\t\tself.postMessage(e.data)\n\t\t}\n\t\tif (e.data && e.data.caves) {\n\t\t\tconst { x, y, z } = e.data\n\t\t\tfor (let X = 0; X < 16; X++) {\n\t\t\t\tfor (let Y = 0; Y < 16; Y++) {\n\t\t\t\t\tfor (let Z = 0; Z < 16; Z++) {\n\t\t\t\t\t\tsubChunk[X * 256 + Y * 16 + Z] = isCave(X + x, Y + y, Z + z) | 0\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tself.postMessage({\n\t\t\t\tjobId: e.data.jobId,\n\t\t\t\tcaves: subChunk,\n\t\t\t})\n\t\t}\n\t}\n}\n\nWorker()");
+/* harmony default export */ __webpack_exports__["default"] = ("function Worker() {\r\n\tconst { abs, floor } = Math\r\n\r\n\tfunction openSimplexNoise(clientSeed) {\r\n\t\tconst toNums = function(s) {\r\n\t\t\treturn s.split(\",\").map(function(s) {\r\n\t\t\t\treturn new Uint8Array(s.split(\"\").map(function(v) {\r\n\t\t\t\t\treturn Number(v)\r\n\t\t\t\t}))\r\n\t\t\t})\r\n\t\t}\r\n\t\tconst decode = function(m, r, s) {\r\n\t\t\treturn new Int8Array(s.split(\"\").map(function(v) {\r\n\t\t\t\treturn parseInt(v, r) + m\r\n\t\t\t}))\r\n\t\t}\r\n\t\tconst toNumsB32 = function(s) {\r\n\t\t\treturn s.split(\",\").map(function(s) {\r\n\t\t\t\treturn parseInt(s, 32)\r\n\t\t\t})\r\n\t\t}\r\n\t\tconst NORM_3D = 1.0 / 206.0\r\n\t\tconst SQUISH_3D = 1 / 3\r\n\t\tconst STRETCH_3D = -1 / 6\r\n\t\tvar base3D = toNums(\"0000110010101001,2110210120113111,110010101001211021012011\")\r\n\t\tconst gradients3D = decode(-11, 23, \"0ff7mf7fmmfffmfffm07f70f77mm7ff0ff7m0f77m77f0mf7fm7ff0077707770m77f07f70\")\r\n\t\tvar lookupPairs3D = function() {\r\n\t\t\treturn new Uint16Array(toNumsB32(\"0,2,1,1,2,2,5,1,6,0,7,0,10,2,12,2,41,1,45,1,50,5,51,5,g6,0,g7,0,h2,4,h6,4,k5,3,k7,3,l0,5,l1,5,l2,4,l5,3,l6,4,l7,3,l8,d,l9,d,la,c,ld,e,le,c,lf,e,m8,k,ma,i,p9,l,pd,n,q8,k,q9,l,15e,j,15f,m,16a,i,16e,j,19d,n,19f,m,1a8,f,1a9,h,1aa,f,1ad,h,1ae,g,1af,g,1ag,b,1ah,a,1ai,b,1al,a,1am,9,1an,9,1bg,b,1bi,b,1eh,a,1el,a,1fg,8,1fh,8,1qm,9,1qn,9,1ri,7,1rm,7,1ul,6,1un,6,1vg,8,1vh,8,1vi,7,1vl,6,1vm,7,1vn,6\"))\r\n\t\t}\r\n\t\tvar p3D = decode(-1, 5, \"112011210110211120110121102132212220132122202131222022243214231243124213241324123222113311221213131221123113311112202311112022311112220342223113342223311342223131322023113322023311320223113320223131322203311322203131\")\r\n\t\tconst setOf = function(count) {\r\n\t\t\tvar a = [], i = 0;\r\n\t\t\twhile (i < count) {\r\n\t\t\t\ta.push(i++)\r\n\t\t\t}\r\n\t\t\treturn a\r\n\t\t}\r\n\t\tconst doFor = function(count, cb) {\r\n\t\t\tvar i = 0;\r\n\t\t\twhile (i < count && cb(i++) !== true);\r\n\t\t}\r\n\r\n\t\tfunction shuffleSeed(seed,count){\r\n\t\t\tseed = seed * 1664525 + 1013904223 | 0\r\n\t\t\tcount -= 1\r\n\t\t\treturn count > 0 ? shuffleSeed(seed, count) : seed\r\n\t\t}\r\n\t\tconst types = {\r\n\t\t\t_3D : {\r\n\t\t\t\tbase : base3D,\r\n\t\t\t\tsquish : SQUISH_3D,\r\n\t\t\t\tdimensions : 3,\r\n\t\t\t\tpD : p3D,\r\n\t\t\t\tlookup : lookupPairs3D,\r\n\t\t\t}\r\n\t\t}\r\n\r\n\t\tfunction createContribution(type, baseSet, index) {\r\n\t\t\tvar i = 0\r\n\t\t\tconst multiplier = baseSet[index ++]\r\n\t\t\tconst c = { next : undefined }\r\n\t\t\twhile(i < type.dimensions) {\r\n\t\t\t\tconst axis = \"xyzw\"[i]\r\n\t\t\t\tc[axis + \"sb\"] = baseSet[index + i]\r\n\t\t\t\tc[\"d\" + axis] = - baseSet[index + i++] - multiplier * type.squish\r\n\t\t\t}\r\n\t\t\treturn c\r\n\t\t}\r\n\r\n\t\tfunction createLookupPairs(lookupArray, contributions){\r\n\t\t\tvar i\r\n\t\t\tconst a = lookupArray()\r\n\t\t\tconst res = new Map()\r\n\t\t\tfor (i = 0; i < a.length; i += 2) {\r\n\t\t\t\tres.set(a[i], contributions[a[i + 1]]);\r\n\t\t\t}\r\n\t\t\treturn res\r\n\t\t}\r\n\r\n\t\tfunction createContributionArray(type) {\r\n\t\t\tconst conts = []\r\n\t\t\tconst d = type.dimensions\r\n\t\t\tconst baseStep = d * d\r\n\t\t\tvar k, i = 0\r\n\t\t\twhile (i < type.pD.length) {\r\n\t\t\t\tconst baseSet = type.base[type.pD[i]]\r\n\t\t\t\tlet previous, current\r\n\t\t\t\tk = 0\r\n\t\t\t\tdo {\r\n\t\t\t\t\tcurrent = createContribution(type, baseSet, k)\r\n\t\t\t\t\tif (!previous) {\r\n\t\t\t\t\t\tconts[i / baseStep] = current;\r\n\t\t\t\t\t}\r\n\t\t\t\t\telse {\r\n\t\t\t\t\t\tprevious.next = current;\r\n\t\t\t\t\t}\r\n\t\t\t\t\tprevious = current\r\n\t\t\t\t\tk += d + 1\r\n\t\t\t\t} while(k < baseSet.length)\r\n\r\n\t\t\t\tcurrent.next = createContribution(type, type.pD, i + 1)\r\n\t\t\t\tif (d >= 3) {\r\n\t\t\t\t\tcurrent.next.next = createContribution(type, type.pD, i + d + 2)\r\n\t\t\t\t}\r\n\t\t\t\tif (d === 4) {\r\n\t\t\t\t\tcurrent.next.next.next = createContribution(type, type.pD, i + 11)\r\n\t\t\t\t}\r\n\t\t\t\ti += baseStep\r\n\t\t\t}\r\n\t\t\tconst result = [conts, createLookupPairs(type.lookup, conts)]\r\n\t\t\ttype.base = undefined\r\n\t\t\ttype.lookup = undefined\r\n\t\t\treturn result\r\n\t\t}\r\n\r\n\t\tlet temp = createContributionArray(types._3D)\r\n\t\tconst lookup3D = temp[1]\r\n\t\tconst perm = new Uint8Array(256)\r\n\t\tconst perm3D = new Uint8Array(256)\r\n\t\tconst source = new Uint8Array(setOf(256))\r\n\t\tvar seed = shuffleSeed(clientSeed, 3)\r\n\t\tdoFor(256, function(i) {\r\n\t\t\ti = 255 - i\r\n\t\t\tseed = shuffleSeed(seed, 1)\r\n\t\t\tvar r = (seed + 31) % (i + 1)\r\n\t\t\tr += r < 0 ? i + 1 : 0\r\n\t\t\tperm[i] = source[r]\r\n\t\t\tperm3D[i] = perm[i] % 24 * 3\r\n\t\t\tsource[r] = source[i]\r\n\t\t})\r\n\t\tbase3D = undefined\r\n\t\tlookupPairs3D = undefined\r\n\t\tp3D = undefined\r\n\r\n\t\treturn function(x, y, z) {\r\n\t\t\tconst pD = perm3D\r\n\t\t\tconst p = perm\r\n\t\t\tconst g = gradients3D\r\n\t\t\tconst stretchOffset = (x + y + z) * STRETCH_3D\r\n\t\t\tconst xs = x + stretchOffset, ys = y + stretchOffset, zs = z + stretchOffset\r\n\t\t\tconst xsb = floor(xs), ysb = floor(ys), zsb = floor(zs)\r\n\t\t\tconst squishOffset\t= (xsb + ysb + zsb) * SQUISH_3D\r\n\t\t\tconst dx0 = x - (xsb + squishOffset), dy0 = y - (ysb + squishOffset), dz0 = z - (zsb + squishOffset)\r\n\t\t\tconst xins = xs - xsb, yins = ys - ysb, zins = zs - zsb\r\n\t\t\tconst inSum = xins + yins + zins\r\n\t\t\tvar c = lookup3D.get(\r\n\t\t\t\tyins - zins + 1\r\n\t\t\t\t\t| xins - yins + 1 << 1\r\n\t\t\t\t\t| xins - zins + 1 << 2\r\n\t\t\t\t\t| inSum << 3\r\n\t\t\t\t\t| inSum + zins << 5\r\n\t\t\t\t\t| inSum + yins << 7\r\n\t\t\t\t\t| inSum + xins << 9\r\n\t\t\t)\r\n\t\t\tvar i, value = 0\r\n\t\t\twhile (c !== undefined) {\r\n\t\t\t\tconst dx = dx0 + c.dx, dy = dy0 + c.dy, dz = dz0 + c.dz\r\n\t\t\t\tlet attn = 2 - dx * dx - dy * dy - dz * dz\r\n\t\t\t\tif (attn > 0) {\r\n\t\t\t\t\ti = pD[(p[xsb + c.xsb & 0xFF] + (ysb + c.ysb) & 0xFF) + (zsb + c.zsb) & 0xFF]\r\n\t\t\t\t\tattn *= attn\r\n\t\t\t\t\tvalue += attn * attn * (g[i++] * dx + g[i++] * dy + g[i] * dz)\r\n\t\t\t\t}\r\n\t\t\t\tc = c.next\r\n\t\t\t}\r\n\t\t\treturn value * NORM_3D + 0.5\r\n\t\t}\r\n\t}\r\n\r\n\tlet noise\r\n\tconst smooth = 0.015\r\n\tconst caveSize = 0.0055\r\n\tfunction isCave(x, y, z) {\r\n\t\t// Generate a 3D rigid multifractal noise shell.\r\n\t\t// Then generate another one with different coordinates.\r\n\t\t// Overlay them on top of each other, and the overlapping parts should form a cave-like structure.\r\n\t\t// This is extremely slow, and requires generating 2 noise values for every single block in the world.\r\n\t\t// TODO: replace with a crawler system of some sort, that will never rely on a head position in un-generated chunks.\r\n\r\n\t\tlet cave1 = abs(0.5 - noise(x * smooth, y * smooth, z * smooth)) < caveSize\r\n\t\tlet cave2 = abs(0.5 - noise(y * smooth, z * smooth, x * smooth)) < caveSize\r\n\t\treturn cave1 && cave2\r\n\t}\r\n\r\n\tconst subChunk = new Int8Array(16 * 16 * 16)\r\n\tself.onmessage = function(e) {\r\n\r\n\t\tif (e.data && e.data.seed) {\r\n\t\t\tnoise = openSimplexNoise(e.data.seed)\r\n\t\t\tself.postMessage(e.data)\r\n\t\t}\r\n\t\tif (e.data && e.data.caves) {\r\n\t\t\tconst { x, y, z } = e.data\r\n\t\t\tfor (let X = 0; X < 16; X++) {\r\n\t\t\t\tfor (let Y = 0; Y < 16; Y++) {\r\n\t\t\t\t\tfor (let Z = 0; Z < 16; Z++) {\r\n\t\t\t\t\t\tsubChunk[X * 256 + Y * 16 + Z] = isCave(X + x, Y + y, Z + z) | 0\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\t\t\t}\r\n\r\n\t\t\tself.postMessage({\r\n\t\t\t\tjobId: e.data.jobId,\r\n\t\t\t\tcaves: subChunk,\r\n\t\t\t})\r\n\t\t}\r\n\t}\r\n}\r\n\r\nWorker()");
 
 /***/ }),
 /* 8 */
@@ -6082,6 +6092,20 @@ const texturesFunc = function (setPixel, getPixels) {
 		polishedAndesite: "0g0g90oilzi70sz23gf0v7a3270yjgjcv10ru60v11vyakf11w3ugv19okmwv1e4v30f7878888888788785843334442443134084444443376644307416763343446440844442456433334083344333424433318444634666554320833433332123444184562444466776608434433443344540844667633366444081444444664466208466654333134760844433334465334083333664444334406100000000110000",
 		polishedDiorite: "0g0g80qqu0ov0xfi5tr11vy6m71asubcv1f94t1b1jpkttr1o60w731ri7bpb7776677777666774764556657643564166764466577434506565333565454441675334576435457176544567733456607566767655346450744765756564534063556655467534516566544565544761664334655465666075673555775644517557654375466340745654576435744072445566545654512101110001100110",
 		polishedGranite: "0g0g90l56fi70plgu0v0yhw0sf1424tmn17eb8cf1aqna4f1e3al8f1e3x7un1jnje2n8888786866866565843344345444334374744554442446418444243334553342844444453344443262343344443734428345543644444431844444423445544263422344554433636444433443344442734444444464334284473344244442318455444445543341633443264434455264443444334447412111001110111100",
+		lava: n => {
+			for (let x = 0; x < 16; ++x) {
+				for (let y = 0; y < 16; ++y) {
+					const d = Math.random() * 0.2 + 0.70;
+					const d2 = Math.random() * 0.2 + 0.70;
+
+					const r = 0xff * ((d+d2)/2);
+					const g = 0x77 * d2;
+					const b = 0x00;
+
+					setPixel(n, x, y, r, g, b);
+				}
+			}
+		},
 	}
 }
 
@@ -6227,6 +6251,13 @@ const blockData = [
 	{ name: "polishedDiorite" },
 	{ name: "granite" },
 	{ name: "polishedGranite" },
+	{
+		name: "lava",
+		transparent: true,
+		shadow: false,
+		lightLevel: 15,
+		solid: false
+	},
 	{ name: "light", textures: "nothing", lightLevel: 15, solid: false, icon: "glass", transparent: true, shadow: false }
 	// I swear, if y'all don't stop asking about TNT every 5 minutes!
 	/* {
@@ -6704,7 +6735,14 @@ let sphere;
 function carveSphere(x, y, z, world) {
 	if (y > 3) {
 		for (let i = 0; i < sphere.length; i += 3) {
-			world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].air, true)
+			if(world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone||world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].dirt||world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].grass||world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].sand){
+				if(y + sphere[i + 1]>7){
+					world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].air, true)
+				}
+				else{
+					world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].lava, true)
+				}
+			}
 		}
 	}
 }
@@ -7341,7 +7379,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-const { floor, min, max } = Math;
+const { floor, min, max, round, PI } = Math;
 
 class Chunk {
 	constructor(x, z, world, glExtensions, gl, glCache, superflat, caves) {
@@ -7366,6 +7404,72 @@ class Chunk {
 		this.gl = gl
 		this.glCache = glCache
 		this.glExtensions = glExtensions
+	}
+	genChunk(superflat) {
+		let trueX = this.x
+		let trueZ = this.z
+
+		if (this.generated) {
+			return false
+		}
+
+		let temperature = 0
+		let moisture = 0
+		let solid
+		let riverThreshold
+		for (let i = 0; i < 16; i++) {
+			for (let k = 0; k < 16; k++) {
+				/*randomSeed(hash(trueX + i, trueZ + k) * 2100000)
+				temperature = superflat ? 0.5 : noiseProfile.noise((trueX + i) * 0.005, (trueZ + k) * 0.005, 16)
+				temperature += random(-0.05, 0.05)
+				randomSeed(hash(trueX + i, trueZ + k) * 210000)
+				moisture = superflat ? 0.5 : noiseProfile.noise((trueX + i) * 0.005, (trueZ + k) * 0.005, 17)
+				moisture += random(-0.05, 0.05)*/
+
+				this.tops[k * 16 + i] = 8
+
+				for (let j = 1; j < 255; j++) {
+					this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air)
+				}
+
+				for (let j = 1; j < 255; j++) {
+					solid = 0
+					if (_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.005, (trueZ + k) * 0.005, j * 0.005) < (128 / j) * _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.005, (trueZ + k) * 0.005, (128 - j) * 0.005 + 1)) {
+						solid = 1
+					}
+					if (solid === 1) {
+						this.tops[k * 16 + i] = j
+						this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
+					}
+					else {
+						if (j < 8) {
+							this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lava)
+						}
+						if (this.getBlock(i, j - 1, k)) {
+							this.setBlock(i, j - 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass)
+							if (this.getBlock(i, j - 2, k)) {
+								this.setBlock(i, j - 2, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
+								if (this.getBlock(i, j - 3, k)) {
+									this.setBlock(i, j - 3, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
+									if (this.getBlock(i, j - 4, k)) {
+										this.setBlock(i, j - 4, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
+									}
+								}
+							}
+						}
+					}
+				}
+				for(let j = 60; j < 255; j++){
+					riverThreshold = 60/-j
+					if(Math.round(_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.025, (trueZ + k) * 0.025)*riverThreshold) === round(_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.025, (trueZ + k) * 0.025, 3)*riverThreshold)){
+						//this.setBlock(i, j, k, blockIds.air)
+					}
+				}
+				this.setBlock(i, 0, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].bedrock)
+				this.setBlock(i, 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
+			}
+		}
+		this.generated = true
 	}
 	getBlock(x, y, z) {
 		let s = y >> 4
@@ -7410,7 +7514,7 @@ class Chunk {
 			}
 		}
 
-		// Spread the light to places where the virtical columns stopped earlier, plus chunk borders
+		// Spread the light to places where the vertical columns stopped earlier, plus chunk borders
 		let spread = []
 		for (let x = 0; x < 16; x++) {
 			for (let z = 0; z < 16; z++) {
@@ -7465,7 +7569,7 @@ class Chunk {
 		}
 		if (update && (x < this.x || x > this.x + 15 || z < this.z || z > this.z + 15)) {
 			let chunk = world.getChunk(x, z)
-			if (chunk.buffer && !world.meshQueue.includes(chunk)) {
+			if (this.buffer && !world.meshQueue.includes(chunk)) {
 				world.meshQueue.push(chunk)
 			}
 		}
@@ -7475,8 +7579,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i+1]
-			z = blocks[i+2]
+			y = blocks[i + 1]
+			z = blocks[i + 2]
 			this.trySpread(x - 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x + 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x, y - 1, z, level, spread, blockLight, update)
@@ -7503,7 +7607,7 @@ class Chunk {
 		}
 		if (x < this.x || x > this.x + 15 || z < this.z || z > this.z + 15) {
 			let chunk = world.getChunk(x, z)
-			if (chunk && chunk.buffer && !world.meshQueue.includes(chunk)) {
+			if (chunk && this.buffer && !world.meshQueue.includes(chunk)) {
 				world.meshQueue.push(chunk)
 			}
 		}
@@ -7513,8 +7617,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i+1]
-			z = blocks[i+2]
+			y = blocks[i + 1]
+			z = blocks[i + 2]
 			this.tryUnSpread(x - 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x + 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x, y - 1, z, level, spread, respread, blockLight)
@@ -7533,8 +7637,8 @@ class Chunk {
 			let spread = respread[level]
 			for (let j = 0; j < blocks.length; j += 3) {
 				let x = blocks[j]
-				let y = blocks[j+1]
-				let z = blocks[j+2]
+				let y = blocks[j + 1]
+				let z = blocks[j + 2]
 				this.trySpread(x - 1, y, z, level, spread, blockLight)
 				this.trySpread(x + 1, y, z, level, spread, blockLight)
 				this.trySpread(x, y - 1, z, level, spread, blockLight)
@@ -7694,7 +7798,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 3.7 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].diamondOre)
 					}
 				}
@@ -7702,7 +7806,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 111.5 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 64 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].ironOre)
 					}
 				}
@@ -7710,7 +7814,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 185.5 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * ground | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].coalOre)
 					}
 				}
@@ -7718,7 +7822,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 10.4 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].goldOre)
 					}
 				}
@@ -7726,7 +7830,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 29.1 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].redstoneOre)
 					}
 				}
@@ -7734,7 +7838,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 4.1 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lapisOre)
 					}
 				}
@@ -8165,8 +8269,15 @@ class Entity {
 		const x = round(this.x)
 		const y = round(this.y)
 		const z = round(this.z)
-		const blockLight = world.getLight(x, y, z, 1)
-		const skyLight = world.getLight(x, y, z, 0)
+		let blockLight = 15
+		let skyLight = 15
+		try {
+			blockLight = world.getLight(x, y, z, 1)
+			skyLight = world.getLight(x, y, z, 0)
+		}
+		catch(e) {
+			console.error(e)
+		}
 		const lightLevel = min(max(skyLight, blockLight) * 0.9 + 0.1, 1.0)
 		gl.bindTexture(gl.TEXTURE_2D, _texture_js__WEBPACK_IMPORTED_MODULE_3__["textureAtlas"])
 		gl.uniform1i(glCache.uSamplerEntity, 0)
