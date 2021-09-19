@@ -56,7 +56,7 @@ class Chunk {
 
 				groundBlocks = [blockIds.grass]
 				randomSeed(hash((trueX + i), trueZ + k) * 21000)
-				for(var j = 1; j < floor(random(1, 3)); j++){
+				for (var j = 1; j < floor(random(1, 3)); j++) {
 					groundBlocks[j] = blockIds.dirt
 				}
 				cliffBlocks = [blockIds.stone]
@@ -75,12 +75,14 @@ class Chunk {
 						this.setBlock(i, j, k, blockIds.stone)
 					}
 					else {
-						if (j < 119) {
+						if (j < 100) {
 							this.setBlock(i, j, k, blockIds.water)
 						}
-						for (let a = 0; a < groundBlocks.length; a++) {
-							if (!this.getBlock(i, (j - a) - 1, k)) break
-							this.setBlock(i, (j - a) - 1, k, groundBlocks[a])
+						else {
+							for (let a = 0; a < groundBlocks.length; a++) {
+								if (this.getBlock(i, (j - a) - 1, k) !== blockIds.stone) break
+								this.setBlock(i, (j - a) - 1, k, groundBlocks[a])
+							}
 						}
 					}
 				}
@@ -210,8 +212,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i+1]
-			z = blocks[i+2]
+			y = blocks[i + 1]
+			z = blocks[i + 2]
 			this.trySpread(x - 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x + 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x, y - 1, z, level, spread, blockLight, update)
@@ -248,8 +250,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i+1]
-			z = blocks[i+2]
+			y = blocks[i + 1]
+			z = blocks[i + 2]
 			this.tryUnSpread(x - 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x + 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x, y - 1, z, level, spread, respread, blockLight)
@@ -268,8 +270,8 @@ class Chunk {
 			let spread = respread[level]
 			for (let j = 0; j < blocks.length; j += 3) {
 				let x = blocks[j]
-				let y = blocks[j+1]
-				let z = blocks[j+2]
+				let y = blocks[j + 1]
+				let z = blocks[j + 2]
 				this.trySpread(x - 1, y, z, level, spread, blockLight)
 				this.trySpread(x + 1, y, z, level, spread, blockLight)
 				this.trySpread(x, y - 1, z, level, spread, blockLight)
@@ -429,7 +431,7 @@ class Chunk {
 				if (random() < 3.7 / 256) {
 					let y = random() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===blockIds.stone) {
 						this.setBlock(i, y < ground ? y : ground, k, blockIds.diamondOre)
 					}
 				}
@@ -437,7 +439,7 @@ class Chunk {
 				if (random() < 111.5 / 256) {
 					let y = random() * 64 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===blockIds.stone) {
 						this.setBlock(i, y < ground ? y : ground, k, blockIds.ironOre)
 					}
 				}
@@ -445,7 +447,7 @@ class Chunk {
 				if (random() < 185.5 / 256) {
 					let y = random() * ground | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===blockIds.stone) {
 						this.setBlock(i, y < ground ? y : ground, k, blockIds.coalOre)
 					}
 				}
@@ -453,7 +455,7 @@ class Chunk {
 				if (random() < 10.4 / 256) {
 					let y = random() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===blockIds.stone) {
 						this.setBlock(i, y < ground ? y : ground, k, blockIds.goldOre)
 					}
 				}
@@ -461,7 +463,7 @@ class Chunk {
 				if (random() < 29.1 / 256) {
 					let y = random() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===blockIds.stone) {
 						this.setBlock(i, y < ground ? y : ground, k, blockIds.redstoneOre)
 					}
 				}
@@ -469,7 +471,7 @@ class Chunk {
 				if (random() < 4.1 / 256) {
 					let y = random() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===blockIds.stone) {
 						this.setBlock(i, y < ground ? y : ground, k, blockIds.lapisOre)
 					}
 				}
