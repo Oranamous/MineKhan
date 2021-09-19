@@ -278,7 +278,7 @@ async function MineKhan() {
 
 	// cache global objects locally.
 	const { Math, performance, Date, document, console } = window
-	const { cos, sin, round, floor, min, max, abs, sqrt } = Math
+	const { cos, sin, round, floor, ceil, min, max, abs, sqrt } = Math
 	const win = window.parent
 	const chatOutput = document.getElementById("chat")
 	const chatInput = document.getElementById("chatbar")
@@ -412,7 +412,7 @@ async function MineKhan() {
 	//{
 	let version = "Alpha 0.7.1"
 	let reach = 5 // Max distance player can place or break blocks
-	let sky = [0.33, 0.54, 0.72] // 0 to 1 RGB color scale
+	let sky = new Float32Array([0.33, 0.54, 0.72]) // 0 to 1 RGB color scale
 	let superflat = false
 	let trees = true
 	let caves = true
@@ -439,7 +439,7 @@ async function MineKhan() {
 		extra: 30, // Extra height added to the world.
 		caveSize: 0.00 // Redefined right above where it's used
 	}
-	let maxHeight = 256
+	let maxHeight = 255
 	let blockOutlines = false
 	let blockFill = true
 	let updateHUD = true
@@ -1466,7 +1466,7 @@ async function MineKhan() {
 						p.velocity.y = 0
 					}
 					else {
-						p.y = face[1] + y - p.topH
+						p.y = face[1] + y - p.topH - 0.01
 					}
 				}
 			}
@@ -1547,17 +1547,22 @@ async function MineKhan() {
 		},
 	}
 	let resolveContactsAndUpdatePosition = function() {
-		let pminX = round(p.x - p.w + (p.velocity.x < 0 ? p.velocity.x : 0))
-		let pmaxX = round(p.x + p.w + (p.velocity.x > 0 ? p.velocity.x : 0))
-		let pminY = round(p.y - p.bottomH + (p.velocity.y < 0 ? p.velocity.y : 0))
-		let pmaxY = round(p.y + p.topH    + (p.velocity.y > 0 ? p.velocity.y : 0))
-		let pminZ = round(p.z - p.w + (p.velocity.z < 0 ? p.velocity.z : 0))
-		let pmaxZ = round(p.z + p.w + (p.velocity.z > 0 ? p.velocity.z : 0))
-		let block = null
-		let vel = p.velocity
+		let mag = p.velocity.mag()
+		let steps = Math.ceil(mag)
+		const VX = p.velocity.x / steps
+		const VY = p.velocity.y / steps
+		const VZ = p.velocity.z / steps
 
-		for (let x = pminX; x <= pmaxX; x++) {
-			for (let y = pmaxY; y >= pminY; y--) {
+		let pminX = floor(p.x - p.w + (p.velocity.x < 0 ? p.velocity.x : 0))
+		let pmaxX = ceil(p.x + p.w + (p.velocity.x > 0 ? p.velocity.x : 0))
+		let pminY = floor(p.y - p.bottomH + (p.velocity.y < 0 ? p.velocity.y : 0))
+		let pmaxY = ceil(p.y + p.topH    + (p.velocity.y > 0 ? p.velocity.y : 0))
+		let pminZ = floor(p.z - p.w + (p.velocity.z < 0 ? p.velocity.z : 0))
+		let pmaxZ = ceil(p.z + p.w + (p.velocity.z > 0 ? p.velocity.z : 0))
+		let block = null
+
+		for (let y = pmaxY; y >= pminY; y--) {
+			for (let x = pminX; x <= pmaxX; x++) {
 				for (let z = pminZ; z <= pmaxZ; z++) {
 					let block = world.getBlock(x, y, z)
 					if (_js_blockData_js__WEBPACK_IMPORTED_MODULE_11__["blockData"][block].solid) {
@@ -1567,82 +1572,92 @@ async function MineKhan() {
 			}
 		}
 
+		let hasCollided = false
 		p.px = p.x
 		p.py = p.y
 		p.pz = p.z
+		for (let j = 1; j <= steps && !hasCollided; j++) {
+			let px = p.x
+			let pz = p.z
 
-		//Check collisions in the Y direction
-		p.onGround = false
-		p.canStepX = false
-		p.canStepZ = false
-		p.y += vel.y
-		for (let i = 0; i < contacts.size; i++) {
-			block = contacts.array[i]
-			if (collided(block[0], block[1], block[2], 0, vel.y, 0, block[3])) {
-				vel.y = 0
-				break
-			}
-		}
-		if (p.onGround) {
-			p.canStepX = true
-			p.canStepZ = true
-		}
-
-		var sneakLock = false, sneakSafe = false
-		if (p.sneaking) {
+			//Check collisions in the Y direction
+			p.onGround = false
+			p.canStepX = false
+			p.canStepZ = false
+			p.y += VY
 			for (let i = 0; i < contacts.size; i++) {
 				block = contacts.array[i]
-				if (onBox(block[0], block[1], block[2], 1, 1, 1)) {
-					sneakLock = true
+				if (collided(block[0], block[1], block[2], 0, VY, 0, block[3])) {
+					p.velocity.y = 0
+					hasCollided = true
 					break
 				}
 			}
-		}
+			if (p.onGround) {
+				p.canStepX = true
+				p.canStepZ = true
+			}
 
-		//Check collisions in the X direction
-		p.x += vel.x
-		for (let i = 0; i < contacts.size; i++) {
-			block = contacts.array[i]
-			if (collided(block[0], block[1], block[2], vel.x, 0, 0, block[3])) {
-				if (p.canStepX && !world.getBlock(block[0], block[1] + 1, block[2]) && !world.getBlock(block[0], block[1] + 2, block[2])) {
-					continue
+			var sneakLock = false, sneakSafe = false
+			if (p.sneaking) {
+				for (let i = 0; i < contacts.size; i++) {
+					block = contacts.array[i]
+					if (onBox(block[0], block[1], block[2], 1, 1, 1)) {
+						sneakLock = true
+						break
+					}
 				}
-				// p.x = p.px
-				vel.x = 0
-				break
 			}
-			if (sneakLock && onBox(block[0], block[1], block[2], 1, 1, 1)) {
-				sneakSafe = true
-			}
-		}
 
-		if (sneakLock && !sneakSafe) {
-			p.x = p.px
-			vel.x = 0
-		}
-		sneakSafe = false
-
-		//Check collisions in the Z direction
-		p.z += vel.z
-		for (let i = 0; i < contacts.size; i++) {
-			block = contacts.array[i]
-			if (collided(block[0], block[1], block[2], 0, 0, vel.z, block[3])) {
-				if (p.canStepZ && !world.getBlock(block[0], block[1] + 1, block[2]) && !world.getBlock(block[0], block[1] + 2, block[2])) {
-					continue
+			//Check collisions in the X direction
+			p.x += VX
+			for (let i = 0; i < contacts.size; i++) {
+				block = contacts.array[i]
+				if (collided(block[0], block[1], block[2], VX, 0, 0, block[3])) {
+					if (p.canStepX && !world.getBlock(block[0], block[1] + 1, block[2]) && !world.getBlock(block[0], block[1] + 2, block[2])) {
+						continue
+					}
+					p.velocity.x = 0
+					hasCollided = true
+					break
 				}
-				// p.z = p.pz
-				vel.z = 0
-				break
+				if (sneakLock && onBox(block[0], block[1], block[2], 1, 1, 1)) {
+					sneakSafe = true
+				}
 			}
-			if (sneakLock && onBox(block[0], block[1], block[2], 1, 1, 1)) {
-				sneakSafe = true
-			}
-		}
 
-		if (sneakLock && !sneakSafe) {
-			p.z = p.pz
-			vel.z = 0
+			if (sneakLock && !sneakSafe) {
+				p.x = px
+				p.velocity.x = 0
+				hasCollided = true
+			}
+			sneakSafe = false
+
+			//Check collisions in the Z direction
+			p.z += VZ
+			for (let i = 0; i < contacts.size; i++) {
+				block = contacts.array[i]
+				if (collided(block[0], block[1], block[2], 0, 0, VZ, block[3])) {
+					if (p.canStepZ && !world.getBlock(block[0], block[1] + 1, block[2]) && !world.getBlock(block[0], block[1] + 2, block[2])) {
+						continue
+					}
+					// p.z = p.pz
+					p.velocity.z = 0
+					hasCollided = true
+					break
+				}
+				if (sneakLock && onBox(block[0], block[1], block[2], 1, 1, 1)) {
+					sneakSafe = true
+				}
+			}
+
+			if (sneakLock && !sneakSafe) {
+				p.z = pz
+				p.velocity.z = 0
+				hasCollided = true
+			}
 		}
+		
 
 		if (!p.flying) {
 			let drag = p.onGround ? 0.5 : 0.85
@@ -1922,6 +1937,34 @@ async function MineKhan() {
 		chat(`${currentUser.username}: ${msg}`)
 	}
 
+	let commands = new Map()
+	commands.set("ban", args => {
+		let username = args[0]
+		if (!username) {
+			chat(`Please provide a username. Like /ban Willard`)
+			return
+		}
+		if (!window.ban) {
+			chat("This is a singleplayer world. There's nobody to ban.")
+			return
+		}
+		window.ban(username)
+	})
+	commands.set("online", args => {
+		if (window.online && multiplayer) {
+			window.online()
+		} else {
+			chat("You're all alone. Sorry.")
+		}
+	})
+
+	function sendCommand(msg) {
+		msg = msg.substr(1)
+		let parts = msg.split(" ")
+		let cmd = parts.shift()
+		if (commands.has(cmd)) commands.get(cmd)(parts)
+	}
+
 	var multiplayer = null
 	let playerPositions = {}
 	let playerEntities = {}
@@ -1988,20 +2031,23 @@ async function MineKhan() {
 				changeScene("loading")
 			}
 			else if (packet.type === "users") {
-				console.log(packet.data)
+				chat(packet.data.join(", "))
 			}
 			else if (packet.type === "ban") {
-				console.log(packet.data)
+				chat(packet.data)
 			}
 			else if (packet.type === "pos") {
 				let pos = packet.data
 				let name = packet.author
 				playerPositions[name] = pos
-				if (!playerEntities[name]) playerEntities[name] = new _js_player_js__WEBPACK_IMPORTED_MODULE_19__["Player"](pos.x, pos.y, pos.z, abs(name.hashCode()) % 80 + 1, glExtensions, gl, glCache, indexBuffer, world, p)
+				if (!playerEntities[name]) playerEntities[name] = new _js_player_js__WEBPACK_IMPORTED_MODULE_19__["Player"](pos.x, pos.y, pos.z, pos.vx, pos.vy, pos.vz, abs(name.hashCode()) % 80 + 1, glExtensions, gl, glCache, indexBuffer, world, p)
 				let ent = playerEntities[name]
 				ent.x = pos.x
 				ent.y = pos.y
 				ent.z = pos.z
+				ent.velx = pos.vx || 0
+				ent.vely = pos.vy || 0
+				ent.velz = pos.vz || 0
 				packet.data.time = now
 			}
 			else if (packet.type === "dc") {
@@ -2028,7 +2074,7 @@ async function MineKhan() {
 				changeScene("main menu")
 			}
 			else {
-				alert("Connection lost!")
+				alert("Connection lost! Willard probably restarted the server. You can re-open your world from the pause menu.")
 			}
 			clearInterval(multiplayer.pos)
 			multiplayer = null
@@ -2040,6 +2086,14 @@ async function MineKhan() {
 		}
 
 		window.ban = function(username) {
+			if (!multiplayer) {
+				chat("Not in a multiplayer world.")
+				return
+			}
+			if (!host) {
+				chat("You don't have permission to do that.")
+				return
+			}
 			multiplayer.send(JSON.stringify({
 				type: "ban",
 				data: username || ""
@@ -2048,12 +2102,13 @@ async function MineKhan() {
 
 		multiplayer.pos = setInterval(() => multiplayer.send(JSON.stringify({
 			type: "pos",
-			data: p2
+			data: {x: p.x, y: p.y, z: p.z, vx: p.velocity.x, vy: p.velocity.y, vz: p.velocity.z}
 		})), 500)
 
 		window.dists = () => {
 			console.log(playerPositions)
 			console.log(playerDistances)
+			return playerEntities
 		}
 	}
 
@@ -2076,7 +2131,7 @@ async function MineKhan() {
 		constructor(empty) {
 			if (!empty) {
 				setSeed(Math.random() * 2000000000 | 0)
-				p.y = superflat ? 4 : floor(_js_random_js__WEBPACK_IMPORTED_MODULE_8__["noiseProfile"].noise(0.04, 0.04) * 180) + 64
+				p.y = superflat ? 6 : round(_js_random_js__WEBPACK_IMPORTED_MODULE_8__["noiseProfile"].noise(8 * generator.smooth, 8 * generator.smooth) * generator.height) + 2 + generator.extra
 			}
 
 			generatedChunks = 0
@@ -2086,6 +2141,7 @@ async function MineKhan() {
 			this.chunks = []
 			this.loaded = []
 			this.sortedChunks = []
+			this.doubleRenderChunks = []
 			this.offsetX = 0
 			this.offsetZ = 0
 			this.lwidth = 0
@@ -2479,10 +2535,10 @@ async function MineKhan() {
 			initModelView(p)
 			let skyLight
 			if (multiplayer) {
-				skyLight = min(max(abs(now % 1200000 - 600000) / 60000 - 5, 0.1), 1)
+				skyLight = min(max(abs(now % 1200000 - 600000) / 60000 - 3, 0.1), 1)
 			}
 			else {
-				skyLight = min(max(abs(++frameCount % 7200 - 3600) / 360 - 5, 0.1), 1)
+				skyLight = min(max(abs(++frameCount % 7200 - 3600) / 360 - 3, 0.1), 1)
 			}
 			gl.clearColor(sky[0] * skyLight, sky[1] * skyLight, sky[2] * skyLight, 1)
 			gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT)
@@ -2516,6 +2572,16 @@ async function MineKhan() {
 			for (let chunk of c) {
 				chunk.render(p, glob)
 			}
+			if (this.doubleRenderChunks.length) {
+				gl.depthMask(false)
+				gl.uniform1i(glCache.uTrans, 1)
+				for (let chunk of this.doubleRenderChunks) {
+					chunk.render(p, glob)
+				}
+				gl.uniform1i(glCache.uTrans, 0)
+				gl.depthMask(true)
+			}
+			
 			renderedChunks = glob.renderedChunks
 
 			gl.uniform3f(glCache.uPos, 0, 0, 0)
@@ -2530,6 +2596,7 @@ async function MineKhan() {
 			if (multiplayer) {
 				for (let name in playerEntities) {
 					const entity = playerEntities[name]
+					entity.update()
 					entity.render()
 				}
 			}
@@ -2586,6 +2653,16 @@ async function MineKhan() {
 						this.chunkGenQueue.push(chunk)
 					}
 					this.loaded[i++] = chunk
+				}
+			}
+			this.sortedChunks.length = 0
+			this.doubleRenderChunks.length = 0
+			for (let chunk of this.loaded) {
+				if (renderFilter(chunk)) {
+					this.sortedChunks.push(chunk)
+				}
+				if (chunk.doubleRender) {
+					this.doubleRenderChunks.push(chunk)
 				}
 			}
 			this.sortedChunks = this.loaded.filter(renderFilter)
@@ -3441,7 +3518,7 @@ async function MineKhan() {
 					newWorldBlock()
 				}
 
-				if (name === controlMap.pickBlock && hitBox.pos) {
+				if (name === controlMap.pickBlock.key && hitBox.pos) {
 					updateHUD = true
 					let block = world.getBlock(hitBox.pos[0], hitBox.pos[1], hitBox.pos[2]) & 0x3ff
 					let index = inventory.hotbar.indexOf(block)
@@ -3694,7 +3771,11 @@ async function MineKhan() {
 			if (msg) {
 				e.preventDefault()
 				e.stopPropagation()
-				sendChat(msg)
+				if (msg.startsWith("/")) {
+					sendCommand(msg)
+				} else {
+					sendChat(msg)
+				}
 				chatInput.value = ""
 			}
 			else {
@@ -3801,6 +3882,8 @@ async function MineKhan() {
 		glCache.uPos = gl.getUniformLocation(program3D, "uPos")
 		glCache.uDist = gl.getUniformLocation(program3D, "uDist")
 		glCache.uTime = gl.getUniformLocation(program3D, "uTime")
+		glCache.uSky = gl.getUniformLocation(program3D, "uSky")
+		glCache.uTrans = gl.getUniformLocation(program3D, "uTrans")
 		glCache.aShadow = gl.getAttribLocation(program3D, "aShadow")
 		glCache.aSkylight = gl.getAttribLocation(program3D, "aSkylight")
 		glCache.aBlocklight = gl.getAttribLocation(program3D, "aBlocklight")
@@ -3808,6 +3891,8 @@ async function MineKhan() {
 		glCache.aVertex = gl.getAttribLocation(program3D, "aVertex")
 
 		gl.uniform1f(glCache.uDist, 1000)
+		gl.uniform3f(glCache.uSky, sky[0], sky[1], sky[2])
+		gl.uniform1i(glCache.uTrans, 0)
 
 		//Send the block textures to the GPU
 		Object(_js_texture_js__WEBPACK_IMPORTED_MODULE_15__["initTextures"])(gl, glCache)
@@ -4555,7 +4640,6 @@ window.onload = async function() {
 	init()
 }
 
-
 /***/ }),
 /* 1 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
@@ -4570,7 +4654,7 @@ __webpack_require__.r(__webpack_exports__);
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("#ifdef GL_FRAGMENT_PRECISION_HIGH\r\n    precision highp float;\r\n#else\r\n    precision mediump float;\r\n#endif\r\n\r\nuniform sampler2D uSampler;\r\nuniform float uTime;\r\nvarying float vShadow;\r\nvarying vec2 vTexture;\r\nvarying float vFog;\r\n\r\nvoid main(){\r\n    vec4 color = texture2D(uSampler, vTexture);\r\n    gl_FragColor = vec4(mix(color.rgb * vShadow, vec3(0.33, 0.54, 0.72) * uTime, vFog), color.a);\r\n    if (gl_FragColor.a == 0.0) discard;\r\n}");
+/* harmony default export */ __webpack_exports__["default"] = ("  \r\n#ifdef GL_FRAGMENT_PRECISION_HIGH\r\n    precision highp float;\r\n#else\r\n    precision mediump float;\r\n#endif\r\n\r\nuniform sampler2D uSampler;\r\nuniform float uTime;\r\nuniform bool uTrans;\r\nuniform vec3 uSky; // vec3(0.33, 0.54, 0.72)\r\nvarying float vShadow;\r\nvarying vec2 vTexture;\r\nvarying float vFog;\r\n\r\nvoid main(){\r\n    vec4 color = texture2D(uSampler, vTexture);\r\n    gl_FragColor = vec4(mix(color.rgb * vShadow, uSky * uTime, vFog), color.a);\r\n    if (!uTrans && gl_FragColor.a != 1.0) discard;\r\n    else if (uTrans && gl_FragColor.a == 1.0) discard;\r\n}");
 
 /***/ }),
 /* 3 */
@@ -4922,7 +5006,7 @@ __webpack_require__.r(__webpack_exports__);
 
 var ___CSS_LOADER_EXPORT___ = _node_modules_css_loader_dist_runtime_api_js__WEBPACK_IMPORTED_MODULE_0___default()(function(i){return i[1]});
 // Module
-___CSS_LOADER_EXPORT___.push([module.i, "body {\r\n\toverflow: hidden; /* Hide scrollbars */\r\n    background-color: black;\r\n}\r\n.world-select {\r\n\twidth: 99vw;\r\n\tmin-width: 300px;\r\n\theight: calc(100vh - 220px);\r\n\tposition: absolute;\r\n\tbottom: 120px;\r\n\toverflow-y: auto;\r\n\tbackground-color: RGBA(0, 0, 0, 0.6);\r\n\tjustify-content: center;\r\n\tmargin: 0 auto;\r\n}\r\n.world {\r\n\twidth: 250px;\r\n\theight: auto;\r\n\tborder: 1px solid black;\r\n\tfont-size: 18px;\r\n\tfont-family: 'Courier New', Courier, monospace;\r\n\tcolor: rgb(180, 180, 180);\r\n\tmargin: 0 auto;\r\n\tmargin-top: 15px;\r\n\tpadding: 5px;\r\n\tcursor: pointer;\r\n}\r\nstrong {\r\n\tcolor: white;\r\n}\r\n.selected {\r\n\tborder: 3px solid white;\r\n\tpadding: 3px;\r\n}\r\ninput[type=text] {\r\n\tbackground-color: black;\r\n\tcaret-color: white;\r\n\tborder: 2px solid gray;\r\n\tcolor: white;\r\n\tfont-size: 24px;\r\n\tpadding-left: 12px;\r\n}\r\ninput[type=text]:focus {\r\n\tborder: 2px solid lightgray;\r\n}\r\n#boxcentertop {\r\n\tz-index: 1;\r\n\twidth: 80vw;\r\n\tmax-width: 400px;\r\n\theight: 50px;\r\n\tposition: relative;\r\n\ttop: 30px;\r\n\tdisplay: block;\r\n\tmargin: 0 auto;\r\n}\r\n.hidden {\r\n\tdisplay: none !important;\r\n}\r\n#onhover {\r\n\tbackground-color: rgba(0, 0, 0, 0.9);\r\n\tcolor: rgb(200, 200, 200);\r\n\tfont-family: 'Courier New', Courier, monospace;\r\n\tword-wrap: normal;\r\n\twidth: auto;\r\n\tmax-width: 400px;\r\n\tposition: absolute;\r\n\tz-index: 1;\r\n\tpadding: 10px;\r\n\tcursor: default;\r\n}\r\n#quota {\r\n\tdisplay: block;\r\n\tposition: absolute;\r\n\twidth: 99vw;\r\n\tmargin: 0 auto;\r\n\tbottom: 110px;\r\n\tz-index: 1;\r\n\tbackground-color: RGBA(0, 0, 0, 0.6);\r\n\tjustify-content: center;\r\n\ttext-align: center;\r\n\tcolor: white;\r\n}\r\n#chat {\r\n    position: absolute;\r\n    left: 0px;\r\n    top: 100px;\r\n    height: calc(100vh - 200px);\r\n    overflow-y: auto;\r\n    overflow-x: hidden;\r\n    width: 40vw;\r\n    min-width: 600px;\r\n    background-color: RGBA(0, 0, 0, 0.5);\r\n    color: white;\r\n}\r\n#chatbar {\r\n    position: absolute;\r\n    left: 30px;\r\n    bottom: 0px;\r\n    height: 20;\r\n    width: calc(100vw - 60px);\r\n    background-color: RGBA(0, 0, 0, 0.5);\r\n    color: white;\r\n}\r\n.message {\r\n    width: 100%;\r\n    background-color: transparent;\r\n    padding: 10px;\r\n    word-wrap: break-word;\r\n}\r\n@font-face {\r\n\tfont-family: 'VT323';\r\n\tfont-style: normal;\r\n\tfont-weight: 400;\r\n\tfont-display: swap;\r\n\tsrc: url(https://willard.fun/fonts/VT323.woff2) format('woff2');\r\n\tunicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;\r\n}", ""]);
+___CSS_LOADER_EXPORT___.push([module.i, "body {\r\n\toverflow: hidden; /* Hide scrollbars */\r\n    background-color: black;\r\n}\r\n.world-select {\r\n\twidth: 99vw;\r\n\tmin-width: 300px;\r\n\theight: calc(100vh - 220px);\r\n\tposition: absolute;\r\n\tbottom: 120px;\r\n\toverflow-y: auto;\r\n\tbackground-color: RGBA(0, 0, 0, 0.6);\r\n\tjustify-content: center;\r\n\tmargin: 0 auto;\r\n}\r\n.world {\r\n\twidth: 250px;\r\n\theight: auto;\r\n\tborder: 1px solid black;\r\n\tfont-size: 18px;\r\n\tfont-family: 'Courier New', Courier, monospace;\r\n\tcolor: rgb(180, 180, 180);\r\n\tmargin: 0 auto;\r\n\tmargin-top: 15px;\r\n\tpadding: 5px;\r\n\tcursor: pointer;\r\n}\r\nstrong {\r\n\tcolor: white;\r\n}\r\n.selected {\r\n\tborder: 3px solid white;\r\n\tpadding: 3px;\r\n}\r\ninput[type=text] {\r\n\tbackground-color: black;\r\n\tcaret-color: white;\r\n\tborder: 2px solid gray;\r\n\tcolor: white;\r\n\tfont-size: 24px;\r\n\tpadding-left: 12px;\r\n}\r\ninput[type=text]:focus {\r\n\tborder: 2px solid lightgray;\r\n}\r\n#boxcentertop {\r\n\tz-index: 1;\r\n\twidth: 80vw;\r\n\tmax-width: 400px;\r\n\theight: 50px;\r\n\tposition: relative;\r\n\ttop: 30px;\r\n\tdisplay: block;\r\n\tmargin: 0 auto;\r\n}\r\n.hidden {\r\n\tdisplay: none !important;\r\n}\r\n#onhover {\r\n\tbackground-color: rgba(0, 0, 0, 0.9);\r\n\tcolor: rgb(200, 200, 200);\r\n\tfont-family: 'Courier New', Courier, monospace;\r\n\tword-wrap: normal;\r\n\twidth: auto;\r\n\tmax-width: 400px;\r\n\tposition: absolute;\r\n\tz-index: 1;\r\n\tpadding: 10px;\r\n\tcursor: default;\r\n}\r\n#quota {\r\n\tdisplay: block;\r\n\tposition: absolute;\r\n\twidth: 99vw;\r\n\tmargin: 0 auto;\r\n\tbottom: 110px;\r\n\tz-index: 1;\r\n\tbackground-color: RGBA(0, 0, 0, 0.6);\r\n\tjustify-content: center;\r\n\ttext-align: center;\r\n\tcolor: white;\r\n}\r\n#chat {\r\n    position: absolute;\r\n    left: 0px;\r\n    top: 100px;\r\n    height: calc(100vh - 200px);\r\n    overflow-y: auto;\r\n    overflow-x: hidden;\r\n\tpadding-right: 20px;\r\n    width: 40vw;\r\n    min-width: 600px;\r\n    background-color: RGBA(0, 0, 0, 0.5);\r\n    color: white;\r\n}\r\n#chatbar {\r\n    position: absolute;\r\n    left: 30px;\r\n    bottom: 0px;\r\n    height: 20;\r\n    width: calc(100vw - 60px);\r\n    background-color: RGBA(0, 0, 0, 0.5);\r\n    color: white;\r\n}\r\n.message {\r\n    width: 100%;\r\n    background-color: transparent;\r\n    padding: 10px;\r\n    word-wrap: break-word;\r\n}\r\n@font-face {\r\n\tfont-family: 'VT323';\r\n\tfont-style: normal;\r\n\tfont-weight: 400;\r\n\tfont-display: swap;\r\n\tsrc: url(https://willard.fun/fonts/VT323.woff2) format('woff2');\r\n\tunicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;\r\n}", ""]);
 // Exports
 /* harmony default export */ __webpack_exports__["default"] = (___CSS_LOADER_EXPORT___);
 
@@ -5551,6 +5635,12 @@ class PVector {
 		this.y *= m
 		this.z *= m
 	}
+	mag() {
+		return Math.sqrt(this.x * this.x + this.y * this.y + this.z * this.z)
+	}
+	magSquared() {
+		return this.x * this.x + this.y * this.y + this.z * this.z
+	}
 }
 
 const { cos, sin } = Math;
@@ -6106,6 +6196,14 @@ const texturesFunc = function (setPixel, getPixels) {
 				}
 			}
 		},
+		water: n => {
+			for (let x = 0; x < 16; ++x) {
+				for (let y = 0; y < 16; ++y) {
+					let brightness = Math.random() * 100 | 0
+					setPixel(n, x, y, brightness, brightness, 255, 100)
+				}
+			}
+		},
 	}
 }
 
@@ -6258,7 +6356,8 @@ const blockData = [
 		lightLevel: 15,
 		solid: false
 	},
-	{ name: "light", textures: "nothing", lightLevel: 15, solid: false, icon: "glass", transparent: true, shadow: false }
+	{ name: "light", textures: "nothing", lightLevel: 15, solid: false, icon: "glass", transparent: true, shadow: false },
+	{ name: "water", semiTrans: true, transparent: true, solid: false, shadow: false}
 	// I swear, if y'all don't stop asking about TNT every 5 minutes!
 	/* {
         name: "tnt",
@@ -6306,6 +6405,7 @@ for (let i = 1; i < BLOCK_COUNT; ++i) {
 	data.lightLevel = data.lightLevel || 0;
 	data.solid = data.solid !== undefined ? data.solid : true
 	data.icon = data.icon || false
+	data.semiTrans = data.semiTrans || false
 }
 
 const blockIds = {}
@@ -7404,6 +7504,7 @@ class Chunk {
 		this.gl = gl
 		this.glCache = glCache
 		this.glExtensions = glExtensions
+		this.doubleRender = false
 	}
 	genChunk(superflat) {
 		let trueX = this.x
@@ -7430,8 +7531,12 @@ class Chunk {
 
 				this.tops[k * 16 + i] = 8
 
-                                groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt]
-                                cliffBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone]
+				groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
+				Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["randomSeed"])(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["hash"])((trueX + i), trueZ + k) * 21000)
+				for(var j = 1; j < floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(1, 3)); j++){
+					groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt
+				}
+				cliffBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone]
 
 				for (let j = 1; j < 255; j++) {
 					this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air)
@@ -7447,21 +7552,21 @@ class Chunk {
 						this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
 					}
 					else {
-						if (j < 8) {
-							this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lava)
+						if (j < 119) {
+							this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
 						}
 						for (let a = 0; a < groundBlocks.length; a++) {
-						  if (!this.getBlock(i, j - a, k)) break
-                                                  this.setBlock(i, j - a, k, groundBlocks[a])
-                                                }
+							if (!this.getBlock(i, (j - a) - 1, k)) break
+							this.setBlock(i, (j - a) - 1, k, groundBlocks[a])
+						}
 					}
 				}
-				for(let j = 60; j < 255; j++){
+				/*for(let j = 60; j < 255; j++){
 					riverThreshold = 60/-j
-					if(Math.round(_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.025, (trueZ + k) * 0.025)*riverThreshold) === round(_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.025, (trueZ + k) * 0.025, 3)*riverThreshold)){
-						//this.setBlock(i, j, k, blockIds.air)
+					if(Math.round(noiseProfile.noise((trueX + i) * 0.025, (trueZ + k) * 0.025)*riverThreshold) === round(noiseProfile.noise((trueX + i) * 0.025, (trueZ + k) * 0.025, 3)*riverThreshold)){
+						this.setBlock(i, j, k, blockIds.air)
 					}
-				}
+				}*/
 				this.setBlock(i, 0, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].bedrock)
 				this.setBlock(i, 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
 			}
@@ -7482,6 +7587,12 @@ class Chunk {
 			this.cleanSections[y >> 4] = this.sections[y >> 4].blocks.slice()
 			this.sections[y >> 4].edited = true
 			this.edited = true
+		}
+		if (_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockData"][blockID].semiTrans) {
+			this.doubleRender = true
+			if (!this.world.doubleRenderChunks.includes(this)) {
+				this.world.doubleRenderChunks.push(this)
+			}
 		}
 		this.sections[y >> 4].setBlock(x, y & 15, z, blockID)
 	}
@@ -7511,7 +7622,7 @@ class Chunk {
 			}
 		}
 
-		// Spread the light to places where the vertical columns stopped earlier, plus chunk borders
+		// Spread the light to places where the virtical columns stopped earlier, plus chunk borders
 		let spread = []
 		for (let x = 0; x < 16; x++) {
 			for (let z = 0; z < 16; z++) {
@@ -7566,7 +7677,7 @@ class Chunk {
 		}
 		if (update && (x < this.x || x > this.x + 15 || z < this.z || z > this.z + 15)) {
 			let chunk = world.getChunk(x, z)
-			if (this.buffer && !world.meshQueue.includes(chunk)) {
+			if (chunk.buffer && !world.meshQueue.includes(chunk)) {
 				world.meshQueue.push(chunk)
 			}
 		}
@@ -7576,8 +7687,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i + 1]
-			z = blocks[i + 2]
+			y = blocks[i+1]
+			z = blocks[i+2]
 			this.trySpread(x - 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x + 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x, y - 1, z, level, spread, blockLight, update)
@@ -7604,7 +7715,7 @@ class Chunk {
 		}
 		if (x < this.x || x > this.x + 15 || z < this.z || z > this.z + 15) {
 			let chunk = world.getChunk(x, z)
-			if (chunk && this.buffer && !world.meshQueue.includes(chunk)) {
+			if (chunk && chunk.buffer && !world.meshQueue.includes(chunk)) {
 				world.meshQueue.push(chunk)
 			}
 		}
@@ -7614,8 +7725,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i + 1]
-			z = blocks[i + 2]
+			y = blocks[i+1]
+			z = blocks[i+2]
 			this.tryUnSpread(x - 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x + 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x, y - 1, z, level, spread, respread, blockLight)
@@ -7634,8 +7745,8 @@ class Chunk {
 			let spread = respread[level]
 			for (let j = 0; j < blocks.length; j += 3) {
 				let x = blocks[j]
-				let y = blocks[j + 1]
-				let z = blocks[j + 2]
+				let y = blocks[j+1]
+				let z = blocks[j+2]
 				this.trySpread(x - 1, y, z, level, spread, blockLight)
 				this.trySpread(x + 1, y, z, level, spread, blockLight)
 				this.trySpread(x, y - 1, z, level, spread, blockLight)
@@ -7795,7 +7906,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 3.7 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
+					if (this.getBlock(i, y, k)) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].diamondOre)
 					}
 				}
@@ -7803,7 +7914,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 111.5 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 64 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
+					if (this.getBlock(i, y, k)) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].ironOre)
 					}
 				}
@@ -7811,7 +7922,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 185.5 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * ground | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
+					if (this.getBlock(i, y, k)) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].coalOre)
 					}
 				}
@@ -7819,7 +7930,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 10.4 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
+					if (this.getBlock(i, y, k)) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].goldOre)
 					}
 				}
@@ -7827,7 +7938,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 29.1 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
+					if (this.getBlock(i, y, k)) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].redstoneOre)
 					}
 				}
@@ -7835,7 +7946,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 4.1 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
+					if (this.getBlock(i, y, k)) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lapisOre)
 					}
 				}
@@ -8060,7 +8171,7 @@ class Entity {
 	updateVelocity(now) {
 		let dt = (now - this.lastUpdate) / 33
 		dt = dt > 2 ? 2 : dt
-		this.vely += -0.02 * dt
+		// this.vely += -0.02 * dt
 		if (this.vely < -1.5) {
 			this.vely = -1.5
 		}
@@ -8263,19 +8374,19 @@ class Entity {
 		modelViewProjectionMatrix.mult(modelMatrix.elements)
 		// row major to column major
 		modelViewProjectionMatrix.transpose()
-		const x = round(this.x)
-		const y = round(this.y)
-		const z = round(this.z)
-		let blockLight = 15
-		let skyLight = 15
-		try {
-			blockLight = world.getLight(x, y, z, 1)
-			skyLight = world.getLight(x, y, z, 0)
-		}
-		catch(e) {
-			console.error(e)
-		}
-		const lightLevel = min(max(skyLight, blockLight) * 0.9 + 0.1, 1.0)
+		// const x = round(this.x)
+		// const y = round(this.y)
+		// const z = round(this.z)
+		// let blockLight = 15
+		// let skyLight = 15
+		// try {
+		// 	blockLight = world.getLight(x, y, z, 1)
+		// 	skyLight = world.getLight(x, y, z, 0)
+		// }
+		// catch(e) {
+		// 	console.error(e)
+		// }
+		const lightLevel = 1 // min(max(skyLight, blockLight) * 0.9 + 0.1, 1.0)
 		gl.bindTexture(gl.TEXTURE_2D, _texture_js__WEBPACK_IMPORTED_MODULE_3__["textureAtlas"])
 		gl.uniform1i(glCache.uSamplerEntity, 0)
 		gl.uniform1f(glCache.uLightLevelEntity, lightLevel)
@@ -8305,7 +8416,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 class Player extends _entity_js__WEBPACK_IMPORTED_MODULE_3__["Entity"] {
-	constructor(x, y, z, blockID, glExtensions, gl, glCache, indexBuffer, world, p) {
+	constructor(x, y, z, vx, vy, vz, blockID, glExtensions, gl, glCache, indexBuffer, world, p) {
 		const block = _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockData"][blockID & 255]
 		const tex = block.textures
 		const shape = _shapes_js__WEBPACK_IMPORTED_MODULE_1__["shapes"].cube
@@ -8336,7 +8447,7 @@ class Player extends _entity_js__WEBPACK_IMPORTED_MODULE_3__["Entity"] {
 			}
 			texNum++
 		}
-		super(x, y, z, 0, 0, 0, 0, 0, 0.6, 1.7, 0.6, new Float32Array(shapeVerts.flat(Infinity)), new Float32Array(texture), size, Infinity, glExtensions, gl, glCache, indexBuffer, world, p)
+		super(x, y, z, 0, 0, vx || 0, vy || 0, vz || 0, 0.6, 1.7, 0.6, new Float32Array(shapeVerts.flat(Infinity)), new Float32Array(texture), size, Infinity, glExtensions, gl, glCache, indexBuffer, world, p)
 	}
 }
 
