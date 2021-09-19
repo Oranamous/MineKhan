@@ -7417,6 +7417,8 @@ class Chunk {
 		let moisture = 0
 		let solid
 		let riverThreshold
+		let groundBlocks
+		let cliffBlocks
 		for (let i = 0; i < 16; i++) {
 			for (let k = 0; k < 16; k++) {
 				/*randomSeed(hash(trueX + i, trueZ + k) * 2100000)
@@ -7427,6 +7429,9 @@ class Chunk {
 				moisture += random(-0.05, 0.05)*/
 
 				this.tops[k * 16 + i] = 8
+
+                                groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt]
+                                cliffBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone]
 
 				for (let j = 1; j < 255; j++) {
 					this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air)
@@ -7445,18 +7450,10 @@ class Chunk {
 						if (j < 8) {
 							this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lava)
 						}
-						if (this.getBlock(i, j - 1, k)) {
-							this.setBlock(i, j - 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass)
-							if (this.getBlock(i, j - 2, k)) {
-								this.setBlock(i, j - 2, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
-								if (this.getBlock(i, j - 3, k)) {
-									this.setBlock(i, j - 3, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
-									if (this.getBlock(i, j - 4, k)) {
-										this.setBlock(i, j - 4, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
-									}
-								}
-							}
-						}
+						for (let a = 0; a < groundBlocks.length; a++) {
+						  if (!this.getBlock(i, j - a, k)) break
+                                                  this.setBlock(i, j - a, k, groundBlocks[a])
+                                                }
 					}
 				}
 				for(let j = 60; j < 255; j++){
