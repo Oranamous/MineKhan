@@ -2258,8 +2258,12 @@ async function MineKhan() {
 						await chunk.carveCaves()
 						debug("Carve caves")
 					}
+					if (!chunk.sculpted) {
+						await chunk.sculpt()
+						debug("Sculpt")
+					}
 					else if (!chunk.populated) {
-						chunk.populate(trees)
+						await chunk.populate(trees)
 						debug("Populate")
 						this.populateQueue.pop()
 					}

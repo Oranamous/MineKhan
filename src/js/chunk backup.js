@@ -2,7 +2,7 @@ import { random, randomSeed, hash, noiseProfile } from "./random.js"
 import { blockData, blockIds } from "./blockData.js"
 import { Section } from "./section.js"
 
-const { floor, min, max, round, sin, cos, abs} = Math;
+const { floor, min, max, round, sin} = Math;
 
 class Chunk {
 	constructor(x, z, world, glExtensions, gl, glCache, superflat, caves) {
@@ -13,11 +13,10 @@ class Chunk {
 		this.sections = []
 		this.cleanSections = []
 		this.tops = new Uint8Array(16 * 16) // Store the heighest block at every (x,z) coordinate
-		this.surfaceBiomes = []
-		this.caveBiomes = []
+		this.surfaceBiomes = new Uint8Array(16 * 16)
+		this.caveBiomes = new Uint8Array(16 * 16)
 		this.optimized = false
-		this.generated = false; // Terrain data
-		this.sculpted = false; // Terrain sculpting and building
+		this.generated = false; // Terrain
 		this.populated = superflat // Trees and ores
 		this.lit = false
 		this.lazy = false
@@ -32,7 +31,7 @@ class Chunk {
 		this.glExtensions = glExtensions
 		this.doubleRender = false
 	}
-	genChunk(superflat) {
+	async genChunk(superflat) {
 		let trueX = this.x
 		let trueZ = this.z
 
@@ -42,75 +41,168 @@ class Chunk {
 
 		let temperature
 		let moisture
-		let height
 		let biome
-		let biomeThreshhold = 0.05
-		let temperatureScale = 0.0005
-		let moistureScale = 0.001
+		let undergroundBiome
+		let groundBlocks
 		let noiseVal
 		let noiseVal2
 		let noiseVal3
+		let noiseVal4
+		let noiseVal5
+		let noiseVal6
+		let noiseVal7
+		let noiseVal8
+		let caveNoiseVal
+		let caveNoiseVal2
+		let caveNoiseVal3
+		let height
+		let solid = new Uint8Array(256)
+		let soilDepth
+		let soilDepth2
+		let undergroundBlock
+		let deepUndergroundBlock
 		for (let i = 0; i < 16; i++) {
 			for (let k = 0; k < 16; k++) {
-				temperature = superflat ? 0 : (noiseProfile.noise((trueX + i) * temperatureScale, (trueZ + k) * temperatureScale, 16)-0.5)
-				moisture = superflat ? 0 : (noiseProfile.noise((trueX + i) * moistureScale, (trueZ + k) * moistureScale, 17)-0.5)
-				noiseVal3 = moisture
-				temperature += random(-0.001, 0.001)
-				moisture += random(-0.001, 0.001)
-				
-				if(temperature>biomeThreshhold){
-					if(moisture<-biomeThreshhold){biome = 'desert';}
-					else if(moisture>biomeThreshhold){biome = 'jungle';}
-					else{biome = 'savanna';}
+				temperature = superflat ? 0 : (noiseProfile.noise((trueX + i) * 0.002, (trueZ + k) * 0.002, 16)-0.5)
+				moisture = superflat ? 0 : (noiseProfile.noise((trueX + i) * 0.005, (trueZ + k) * 0.005, 17.4)-0.5)
+				undergroundBiome = superflat ? 0 : (noiseProfile.noise((trueX + i) * 0.01, (trueZ + k) * 0.01, 19)-0.5)
+
+				this.tops[k * 16 + i] = 100
+
+				/*if(temperature>0.001&&moisture<-0.01){
+					this.surfaceBiomes[k * 16 + i] = 'desert'
+					biome = 'desert'
 				}
-				else if(temperature<-biomeThreshhold){
-					if(moisture<-biomeThreshhold){biome = 'tundra';}
-					else if(moisture>biomeThreshhold){biome = 'glacier';}
-					else{biome = 'taiga';}
+				else if(temperature<-0.001&&moisture<-0.01){
+					this.surfaceBiomes[k * 16 + i] = 'snow'
+					biome = 'snow'
 				}
 				else{
-					if(moisture<-biomeThreshhold){biome = 'plains';}
-					else if(moisture>biomeThreshhold){biome = 'swamp';}
-					else{biome = 'forest';}
+					this.surfaceBiomes[k * 16 + i] = 'plains'
+					biome = 'plains'
+				}*/
+
+				if(temperature>0.06){
+					this.surfaceBiomes[k * 16 + i] = 'desert'
+					biome = 'desert'
+				}
+				else if(temperature<-0.06){
+					this.surfaceBiomes[k * 16 + i] = 'snow'
+					biome = 'snow'
+				}
+				else{
+					this.surfaceBiomes[k * 16 + i] = 'plains'
+					biome = 'plains'
 				}
 				
-				noiseVal = noiseProfile.noise((i+trueX)*0.0025, (k+trueZ)*0.0025);
-				noiseVal2 = noiseProfile.noise((i+trueX)*0.01, (k+trueZ)*0.01);
+				undergroundBlock = blockIds.stone
+				deepUndergroundBlock = blockIds.stone
 				
+				noiseVal = noiseProfile.noise((i+trueX)*0.0025, (k+trueZ)*0.0025);
+				noiseVal2 = noiseProfile.noise((i+trueX)*0.005, (k+trueZ)*0.005);
+				noiseVal3 = noiseProfile.noise((i+trueX)*0.0025, (k+trueZ)*0.0025);
+				noiseVal4 = noiseProfile.noise((i+trueX)*0.001, (k+trueZ)*0.001, 12);
+				noiseVal7 = noiseProfile.noise((i+trueX)*0.01, (k+trueZ)*0.01, 9);
+				noiseVal8 = floor(noiseProfile.noise((i+trueX)*0.05, (k+trueZ)*0.05, 7) * 16) + 48;
 				if(noiseVal<0.5){
 					noiseVal = 1 - noiseVal;
 				}
-				noiseVal-=0.5;
+				if(noiseVal2>0.5){
+					noiseVal2 = 1 - noiseVal2;
+				}
+				if(noiseVal4<0.5){
+					noiseVal4 = 1 - noiseVal4;
+				}
 				noiseVal*=2;
-				noiseVal2*=2;
-				noiseVal3 = abs(noiseVal3*12);
-				
-				
-				
-				if(height > 222){height = 222;}
-				if(height < 32){height = 32;}
-				if(biome === 'swamp'){
-					height = floor(noiseVal*noiseVal2*(1-noiseVal3)*256+64+(noiseVal3*8));
+				noiseVal-=0.5;
+				noiseVal2*=4*noiseVal3;
+				noiseVal4*=2;
+				noiseVal7-=0.5
+				noiseVal5 = floor((noiseVal*noiseVal2)*256 - 32);
+				noiseVal6 = floor(noiseVal4*4000 - 4000 + (noiseVal7*32));
+				if(noiseVal6<noiseVal8){
+					noiseVal6 = noiseVal8;
 				}
-				else if(biome === 'savanna'){
-					height = floor((noiseVal*noiseVal2*256+64)/(8*noiseVal))*(8*noiseVal);
-				}
-				else if(biome === 'desert'){
-					height = floor(noiseVal*noiseVal2*64+70);
-				}
-				else if(biome === 'glacier'){
-					height = floor(noiseVal*noiseVal2*32+80);
+				if(noiseVal5>noiseVal6){
+					height = noiseVal6;
 				}
 				else{
-					height = floor(noiseVal*noiseVal2*256+64);
+					height = noiseVal5;
 				}
+				if(height > 222){height = 222;}
+				if(height < 32){height = 32;}
 				if(height < 72){
 					if(height < 64){biome = 'water';}
 					else{biome = 'beach';}
 				}
-				
 				this.tops[k * 16 + i] = height;
-				this.surfaceBiomes[k * 16 + i] = biome;
+				for(let j = 1; j < this.tops[k * 16 + i]+2; j++){
+					solid[j] = 1;
+				}
+				
+				soilDepth = floor(random(1, 3));
+				soilDepth2 = soilDepth + floor(random(1, 3));
+				
+				if(biome==='beach'){
+					groundBlocks = [blockIds.sand]
+					for (let j = 0; j < soilDepth2; j++) {
+						groundBlocks[j] = blockIds.sand
+					}
+				}
+				else if(biome==='water'){
+					groundBlocks = [blockIds.gravel]
+					for (let j = 0; j < soilDepth2; j++) {
+						groundBlocks[j] = blockIds.gravel
+					}
+				}
+				else if(biome==='desert'){
+					groundBlocks = [blockIds.sand]
+					for (let j = 0; j < soilDepth2; j++) {
+						groundBlocks[j] = blockIds.sand
+					}
+				}
+				else if(biome==='snow'){
+					groundBlocks = [blockIds.whiteWool]
+					for (var j = 0; j < soilDepth; j++) {
+						groundBlocks[j] = blockIds.whiteWool
+					}
+				}
+				else{
+					groundBlocks = [blockIds.grass]
+					for (var j = 1; j < soilDepth; j++) {
+						groundBlocks[j] = blockIds.dirt
+					}
+				}
+				
+				for (let j = 1; j < this.tops[k * 16 + i]+1; j++) {
+					caveNoiseVal = noiseProfile.noise((i+trueX)*0.01, j*0.01, (k+trueZ)*0.01);
+					caveNoiseVal2 = noiseProfile.noise((i+trueX)*0.01, j*0.01+4, (k+trueZ)*0.01);
+					caveNoiseVal3 = noiseProfile.noise((i+trueX)*0.01, j*0.01-4, (k+trueZ)*0.01);
+					if((caveNoiseVal+caveNoiseVal2<sin((j+19)/24)&&caveNoiseVal3>0.5)||caveNoiseVal>0.7){
+						if(j < 8){
+							this.setBlock(i, j, k, blockIds.lava)
+						}
+					}
+					else{
+						if(j < 64){
+							this.setBlock(i, j, k, deepUndergroundBlock)
+						}
+						else{
+							this.setBlock(i, j, k, undergroundBlock)
+						}
+					}
+				}
+				
+				for(let j = this.tops[k * 16 + i]+1; j < 69; j++){
+					this.setBlock(i, j, k, blockIds.water)
+				}
+				
+				for (let a = 0; a < groundBlocks.length; a++) {
+					if (this.getBlock(i, (this.tops[k * 16 + i] - a), k) !== undergroundBlock) break
+					this.setBlock(i, (this.tops[k * 16 + i] - a), k, groundBlocks[a])
+				}
+				this.setBlock(i, 0, k, blockIds.bedrock)
+				this.setBlock(i, 1, k, deepUndergroundBlock)
 			}
 		}
 		this.generated = true
@@ -351,251 +443,38 @@ class Chunk {
 		await Promise.all(promises)
 		this.caves = true
 	}
-	async sculpt() {
-		const { world } = this
-		randomSeed(hash(this.x, this.z) * 210000000)
-		let wx = 0, wz = 0, ground = 0, biome, top = 0, rand = 0, place = false, groundBlocks, soilDepth, soilDepth2, soilDepth3, soilDepth4, caveNoiseVal, caveNoiseVal2, caveNoiseVal3, undergroundBlock = blockIds.stone, deepUndergroundBlock = blockIds.stone
-		for (let i = 0; i < 16; i++) {
-			for (let k = 0; k < 16; k++) {
-				wx = this.x + i
-				wz = this.z + k
-				
-				ground = this.tops[k * 16 + i]
-				biome = this.surfaceBiomes[k * 16 + i]
-				
-				if(world.getBlock(wx + 1, ground+2, wz)||world.getBlock(wx - 1, ground+2, wz)||world.getBlock(wx, ground+2, wz + 1)||world.getBlock(wx, ground+2, wz - 1)){
-					ground+=1;
-				}
-				
-				for (let j = 1; j < ground + 1; j++) {
-					caveNoiseVal = noiseProfile.noise(wx*0.01, j*0.01, wz*0.01);
-					caveNoiseVal2 = noiseProfile.noise(wx*0.01, j*0.01+4, wz*0.01);
-					caveNoiseVal3 = noiseProfile.noise(wx*0.01, j*0.01-4, wz*0.01);
-					if(caveNoiseVal+caveNoiseVal2<sin((j+19)/24)&&caveNoiseVal3>0.5){
-						if(j < 8){
-							this.setBlock(i, j, k, blockIds.lava)
-						}
-					}
-					else{
-						if(j < 64){
-							this.setBlock(i, j, k, deepUndergroundBlock)
-						}
-						else{
-							this.setBlock(i, j, k, undergroundBlock)
-						}
-					}
-				}
-				this.setBlock(i, 0, k, blockIds.bedrock)
-				this.setBlock(i, 1, k, deepUndergroundBlock)
-				
-				soilDepth = floor(random(1, 3));
-				soilDepth2 = soilDepth + floor(random(1, 3));
-				soilDepth3 = soilDepth2 + floor(random(1, 3));
-				soilDepth4 = soilDepth3 + floor(random(1, 3));
-				
-				switch(biome){
-					case 'beach':
-						groundBlocks = [blockIds.sand]
-						for (let j = 0; j < soilDepth3; j++) {
-							groundBlocks[j] = blockIds.sand
-						}
-					break;
-					
-					case 'water':
-						groundBlocks = [blockIds.gravel]
-						for (let j = 0; j < soilDepth4; j++) {
-							groundBlocks[j] = blockIds.gravel
-						}
-					break;
-					
-					case 'desert':
-						groundBlocks = [blockIds.sand]
-						for (let j = 0; j < soilDepth2; j++) {
-							groundBlocks[j] = blockIds.sand
-						}
-					break;
-					
-					case 'jungle':
-						groundBlocks = [blockIds.grass]
-						for (let j = 1; j < soilDepth2; j++) {
-							groundBlocks[j] = blockIds.dirt
-						}
-					break;
-					
-					case 'savanna':
-						groundBlocks = [blockIds.grass]
-						for (let j = 1; j < soilDepth4; j++) {
-							groundBlocks[j] = blockIds.acaciaPlanks
-						}
-					break;
-					
-					case 'tundra':
-						groundBlocks = [blockIds.whiteWool]
-						for (var j = 0; j < soilDepth2; j++) {
-							groundBlocks[j] = blockIds.whiteWool
-						}
-					break;
-					
-					case 'glacier':
-						groundBlocks = [blockIds.lightBlueWool]
-						for (var j = 0; j < soilDepth3; j++) {
-							groundBlocks[j] = blockIds.lightBlueWool
-						}
-					break;
-					
-					case 'taiga':
-						groundBlocks = [blockIds.sprucePlanks]
-						for (var j = 0; j < soilDepth; j++) {
-							groundBlocks[j] = blockIds.sprucePlanks
-						}
-					break;
-					
-					case 'plains':
-						groundBlocks = [blockIds.grass]
-						for (var j = 1; j < soilDepth; j++) {
-							groundBlocks[j] = blockIds.dirt
-						}
-					break;
-					
-					case 'swamp':
-						groundBlocks = [blockIds.brownWool]
-						for (var j = 0; j < soilDepth3; j++) {
-							groundBlocks[j] = blockIds.brownWool
-						}
-					break;
-					
-					case 'forest':
-						groundBlocks = [blockIds.grass]
-						for (var j = 1; j < soilDepth; j++) {
-							groundBlocks[j] = blockIds.dirt
-						}
-					break;
-					
-					default:
-						groundBlocks = [blockIds.grass]
-						for (var j = 1; j < soilDepth; j++) {
-							groundBlocks[j] = blockIds.dirt
-						}
-					break;
-				}
-				
-				for(let j = this.tops[k * 16 + i]+1; j < 69; j++){
-					this.setBlock(i, j, k, blockIds.water)
-				}
-				
-				for (let a = 0; a < groundBlocks.length; a++) {
-					if (this.getBlock(i, ground - a, k) === blockIds.air||this.getBlock(i, ground - a, k) === blockIds.water) break
-					this.setBlock(i, ground - a, k, groundBlocks[a])
-				}
-				
-				for (let a = groundBlocks.length + 1; a < 4; a++) {
-					if (this.getBlock(i, ground - a, k) === blockIds.air||this.getBlock(i, ground - a, k) === blockIds.water) break
-					this.setBlock(i, ground - a, k, undergroundBlock)
-				}
-				
-				
-				if (biome === 'swamp' && world.getBlock(wx + 1, ground, wz) && world.getBlock(wx - 1, ground, wz) && world.getBlock(wx, ground, wz + 1) && world.getBlock(wx, ground, wz - 1)) {
-					this.setBlock(i, ground, k, blockIds.water)
-					if(random()>0.5){
-						this.setBlock(i, ground - 1, k, blockIds.water)
-					}
-				}
-			}
-		}
-
-		this.sculpted = true
-	}
 	async populate(trees) {
 		const { world } = this
 		randomSeed(hash(this.x, this.z) * 210000000)
-		let wx = 0, wz = 0, ground = 0, biome, top = 0, rand = 0, place = false, groundBlocks, soilDepth, soilDepth2, soilDepth3, soilDepth4, caveNoiseVal, caveNoiseVal2, caveNoiseVal3, undergroundBlock = blockIds.stone, deepUndergroundBlock = blockIds.stone
+		let wx = 0, wz = 0, ground = 0, top = 0, rand = 0, place = false
+
 		for (let i = 0; i < 16; i++) {
 			for (let k = 0; k < 16; k++) {
 				wx = this.x + i
 				wz = this.z + k
-				
+
 				ground = this.tops[k * 16 + i]
-				biome = this.surfaceBiomes[k * 16 + i]
-				
-				if (trees && random() < 0.005 && this.getBlock(i, ground, k) === blockIds.grass && ground > 75 && biome === 'forest') {
+				if (ground < 71){
+					for(let j = ground; j < ground + 4; j++){
+						if(world.getBlock(i+1, j, k) !== blockIds.gravel && world.getBlock(i+1, j, k) !== blockIds.sand){
+							world.spawnBlock(i+1, j, k, blockIds.gravel)
+						}
+						if(world.getBlock(i-1, j, k) !== blockIds.gravel && world.getBlock(i-1, j, k) !== blockIds.sand){
+							world.spawnBlock(i-1, j, k, blockIds.gravel)
+						}
+						if(world.getBlock(i, j, k+1) !== blockIds.gravel && world.getBlock(i, j, k+1) !== blockIds.sand){
+							world.spawnBlock(i, j, k+1, blockIds.gravel)
+						}
+						if(world.getBlock(i, j, k-1) !== blockIds.gravel && world.getBlock(i, j, k-1) !== blockIds.sand){
+							world.spawnBlock(i, j, k-1, blockIds.gravel)
+						}
+					}
+				}
+				if (trees && random() < 0.005 && this.getBlock(i, ground, k) === blockIds.grass && ground > 111) {
 
 					top = ground + floor(4.5 + random(2.5))
 					rand = floor(random(4096))
 					let tree = random() < 0.6 ? blockIds.oakLog : ++top && blockIds.birchLog
-
-					//Center
-					for (let j = ground + 1; j <= top; j++) {
-						this.setBlock(i, j, k, tree)
-					}
-					this.setBlock(i, top + 1, k, blockIds.leaves)
-					this.setBlock(i, ground, k, blockIds.dirt)
-
-					//Bottom leaves
-					for (let x = -2; x <= 2; x++) {
-						for (let z = -2; z <= 2; z++) {
-							if (x || z) {
-								if ((x * z & 7) === 4) {
-									place = rand & 1
-									rand >>>= 1
-									if (place) {
-										world.spawnBlock(wx + x, top - 2, wz + z, blockIds.leaves)
-									}
-								}
-								else {
-									world.spawnBlock(wx + x, top - 2, wz + z, blockIds.leaves)
-								}
-							}
-						}
-					}
-
-					//2nd layer leaves
-					for (let x = -2; x <= 2; x++) {
-						for (let z = -2; z <= 2; z++) {
-							if (x || z) {
-								if ((x * z & 7) === 4) {
-									place = rand & 1
-									rand >>>= 1
-									if (place) {
-										world.spawnBlock(wx + x, top - 1, wz + z, blockIds.leaves)
-									}
-								}
-								else {
-									world.spawnBlock(wx + x, top - 1, wz + z, blockIds.leaves)
-								}
-							}
-						}
-					}
-
-					//3rd layer leaves
-					for (let x = -1; x <= 1; x++) {
-						for (let z = -1; z <= 1; z++) {
-							if (x || z) {
-								if (x & z) {
-									place = rand & 1
-									rand >>>= 1
-									if (place) {
-										world.spawnBlock(wx + x, top, wz + z, blockIds.leaves)
-									}
-								}
-								else {
-									world.spawnBlock(wx + x, top, wz + z, blockIds.leaves)
-								}
-							}
-						}
-					}
-
-					//Top leaves
-					world.spawnBlock(wx + 1, top + 1, wz, blockIds.leaves)
-					world.spawnBlock(wx, top + 1, wz - 1, blockIds.leaves)
-					world.spawnBlock(wx, top + 1, wz + 1, blockIds.leaves)
-					world.spawnBlock(wx - 1, top + 1, wz, blockIds.leaves)
-				}
-
-				if (trees && random() < 0.005 && this.getBlock(i, ground, k) === blockIds.grass && ground > 75 && biome === 'jungle') {
-
-					top = ground + floor(4.5 + random(2.5))
-					rand = floor(random(4096))
-					let tree = random() < 0.7 ? blockIds.jungleLog : ++top && blockIds.oakLog
 
 					//Center
 					for (let j = ground + 1; j <= top; j++) {

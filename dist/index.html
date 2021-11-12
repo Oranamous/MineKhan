@@ -2488,8 +2488,12 @@ async function MineKhan() {
 						await chunk.carveCaves()
 						debug("Carve caves")
 					}
+					if (!chunk.sculpted) {
+						await chunk.sculpt()
+						debug("Sculpt")
+					}
 					else if (!chunk.populated) {
-						chunk.populate(trees)
+						await chunk.populate(trees)
 						debug("Populate")
 						this.populateQueue.pop()
 					}
@@ -6835,7 +6839,7 @@ let sphere;
 function carveSphere(x, y, z, world) {
 	if (y > 3) {
 		for (let i = 0; i < sphere.length; i += 3) {
-			if(world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone||world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].dirt||world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].grass||world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])===_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].sand){
+			if(world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water&&world.getBlock(x + sphere[i], y + sphere[i + 1] + 1, z + sphere[i + 2])!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water){
 				if(y + sphere[i + 1]>7){
 					world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].air, true)
 				}
@@ -6846,6 +6850,7 @@ function carveSphere(x, y, z, world) {
 		}
 	}
 }
+
 
 /**
  * Returns a 1 if the face is exposed and should be drawn, or a 0 if the face is hidden
@@ -7479,7 +7484,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-const { floor, min, max, round, PI } = Math;
+const { floor, min, max, round, sin, cos, abs} = Math;
 
 class Chunk {
 	constructor(x, z, world, glExtensions, gl, glCache, superflat, caves) {
@@ -7490,8 +7495,11 @@ class Chunk {
 		this.sections = []
 		this.cleanSections = []
 		this.tops = new Uint8Array(16 * 16) // Store the heighest block at every (x,z) coordinate
+		this.surfaceBiomes = []
+		this.caveBiomes = []
 		this.optimized = false
-		this.generated = false; // Terrain
+		this.generated = false; // Terrain data
+		this.sculpted = false; // Terrain sculpting and building
 		this.populated = superflat // Trees and ores
 		this.lit = false
 		this.lazy = false
@@ -7514,63 +7522,77 @@ class Chunk {
 			return false
 		}
 
-		let temperature = 0
-		let moisture = 0
-		let solid
-		let riverThreshold
-		let groundBlocks
-		let cliffBlocks
+		let temperature
+		let moisture
+		let height
+		let biome
+		let biomeThreshhold = 0.05
+		let temperatureScale = 0.0005
+		let moistureScale = 0.001
+		let noiseVal
+		let noiseVal2
+		let noiseVal3
 		for (let i = 0; i < 16; i++) {
 			for (let k = 0; k < 16; k++) {
-				/*randomSeed(hash(trueX + i, trueZ + k) * 2100000)
-				temperature = superflat ? 0.5 : noiseProfile.noise((trueX + i) * 0.005, (trueZ + k) * 0.005, 16)
-				temperature += random(-0.05, 0.05)
-				randomSeed(hash(trueX + i, trueZ + k) * 210000)
-				moisture = superflat ? 0.5 : noiseProfile.noise((trueX + i) * 0.005, (trueZ + k) * 0.005, 17)
-				moisture += random(-0.05, 0.05)*/
-
-				this.tops[k * 16 + i] = 8
-
-				groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
-				Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["randomSeed"])(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["hash"])((trueX + i), trueZ + k) * 21000)
-				for (var j = 1; j < floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(1, 3)); j++) {
-					groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt
+				temperature = superflat ? 0 : (_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * temperatureScale, (trueZ + k) * temperatureScale, 16)-0.5)
+				moisture = superflat ? 0 : (_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * moistureScale, (trueZ + k) * moistureScale, 17)-0.5)
+				noiseVal3 = moisture
+				temperature += Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(-0.001, 0.001)
+				moisture += Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(-0.001, 0.001)
+				
+				if(temperature>biomeThreshhold){
+					if(moisture<-biomeThreshhold){biome = 'desert';}
+					else if(moisture>biomeThreshhold){biome = 'jungle';}
+					else{biome = 'savanna';}
 				}
-				cliffBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone]
-
-				for (let j = 1; j < 255; j++) {
-					this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air)
+				else if(temperature<-biomeThreshhold){
+					if(moisture<-biomeThreshhold){biome = 'tundra';}
+					else if(moisture>biomeThreshhold){biome = 'glacier';}
+					else{biome = 'taiga';}
 				}
-
-				for (let j = 1; j < 255; j++) {
-					solid = 0
-					if (_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.005, (trueZ + k) * 0.005, j * 0.005) < (128 / j) * _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * 0.005, (trueZ + k) * 0.005, (128 - j) * 0.005 + 1)) {
-						solid = 1
-					}
-					if (solid === 1) {
-						this.tops[k * 16 + i] = j
-						this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
-					}
-					else {
-						if (j < 100) {
-							this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
-						}
-						else {
-							for (let a = 0; a < groundBlocks.length; a++) {
-								if (this.getBlock(i, (j - a) - 1, k) !== _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) break
-								this.setBlock(i, (j - a) - 1, k, groundBlocks[a])
-							}
-						}
-					}
+				else{
+					if(moisture<-biomeThreshhold){biome = 'plains';}
+					else if(moisture>biomeThreshhold){biome = 'swamp';}
+					else{biome = 'forest';}
 				}
-				/*for(let j = 60; j < 255; j++){
-					riverThreshold = 60/-j
-					if(Math.round(noiseProfile.noise((trueX + i) * 0.025, (trueZ + k) * 0.025)*riverThreshold) === round(noiseProfile.noise((trueX + i) * 0.025, (trueZ + k) * 0.025, 3)*riverThreshold)){
-						this.setBlock(i, j, k, blockIds.air)
-					}
-				}*/
-				this.setBlock(i, 0, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].bedrock)
-				this.setBlock(i, 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
+				
+				noiseVal = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((i+trueX)*0.0025, (k+trueZ)*0.0025);
+				noiseVal2 = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((i+trueX)*0.01, (k+trueZ)*0.01);
+				
+				if(noiseVal<0.5){
+					noiseVal = 1 - noiseVal;
+				}
+				noiseVal-=0.5;
+				noiseVal*=2;
+				noiseVal2*=2;
+				noiseVal3 = abs(noiseVal3*12);
+				
+				
+				
+				if(height > 222){height = 222;}
+				if(height < 32){height = 32;}
+				if(biome === 'swamp'){
+					height = floor(noiseVal*noiseVal2*(1-noiseVal3)*256+64+(noiseVal3*8));
+				}
+				else if(biome === 'savanna'){
+					height = floor((noiseVal*noiseVal2*256+64)/(8*noiseVal))*(8*noiseVal);
+				}
+				else if(biome === 'desert'){
+					height = floor(noiseVal*noiseVal2*64+70);
+				}
+				else if(biome === 'glacier'){
+					height = floor(noiseVal*noiseVal2*32+80);
+				}
+				else{
+					height = floor(noiseVal*noiseVal2*256+64);
+				}
+				if(height < 72){
+					if(height < 64){biome = 'water';}
+					else{biome = 'beach';}
+				}
+				
+				this.tops[k * 16 + i] = height;
+				this.surfaceBiomes[k * 16 + i] = biome;
 			}
 		}
 		this.generated = true
@@ -7602,7 +7624,7 @@ class Chunk {
 		let max = this.sections.length * 16 - 1
 		let blockSpread = []
 
-		// Set virtical columns of light to level 15
+		// Set vertical columns of light to level 15
 		for (let x = 0; x < 16; x++) {
 			for (let z = 0; z < 16; z++) {
 				let stop = false
@@ -7624,7 +7646,7 @@ class Chunk {
 			}
 		}
 
-		// Spread the light to places where the virtical columns stopped earlier, plus chunk borders
+		// Spread the light to places where the vertical columns stopped earlier, plus chunk borders
 		let spread = []
 		for (let x = 0; x < 16; x++) {
 			for (let z = 0; z < 16; z++) {
@@ -7811,22 +7833,251 @@ class Chunk {
 		await Promise.all(promises)
 		this.caves = true
 	}
-	populate(trees) {
+	async sculpt() {
 		const { world } = this
 		Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["randomSeed"])(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["hash"])(this.x, this.z) * 210000000)
-		let wx = 0, wz = 0, ground = 0, top = 0, rand = 0, place = false
-
+		let wx = 0, wz = 0, ground = 0, biome, top = 0, rand = 0, place = false, groundBlocks, soilDepth, soilDepth2, soilDepth3, soilDepth4, caveNoiseVal, caveNoiseVal2, caveNoiseVal3, undergroundBlock = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone, deepUndergroundBlock = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone
 		for (let i = 0; i < 16; i++) {
 			for (let k = 0; k < 16; k++) {
 				wx = this.x + i
 				wz = this.z + k
-
+				
 				ground = this.tops[k * 16 + i]
-				if (trees && Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.005 && this.getBlock(i, ground, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass) {
+				biome = this.surfaceBiomes[k * 16 + i]
+				
+				if(world.getBlock(wx + 1, ground+2, wz)||world.getBlock(wx - 1, ground+2, wz)||world.getBlock(wx, ground+2, wz + 1)||world.getBlock(wx, ground+2, wz - 1)){
+					ground+=1;
+				}
+				
+				for (let j = 1; j < ground + 1; j++) {
+					caveNoiseVal = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise(wx*0.01, j*0.01, wz*0.01);
+					caveNoiseVal2 = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise(wx*0.01, j*0.01+4, wz*0.01);
+					caveNoiseVal3 = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise(wx*0.01, j*0.01-4, wz*0.01);
+					if(caveNoiseVal+caveNoiseVal2<sin((j+19)/24)&&caveNoiseVal3>0.5){
+						if(j < 8){
+							this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lava)
+						}
+					}
+					else{
+						if(j < 64){
+							this.setBlock(i, j, k, deepUndergroundBlock)
+						}
+						else{
+							this.setBlock(i, j, k, undergroundBlock)
+						}
+					}
+				}
+				this.setBlock(i, 0, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].bedrock)
+				this.setBlock(i, 1, k, deepUndergroundBlock)
+				
+				soilDepth = floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(1, 3));
+				soilDepth2 = soilDepth + floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(1, 3));
+				soilDepth3 = soilDepth2 + floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(1, 3));
+				soilDepth4 = soilDepth3 + floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(1, 3));
+				
+				switch(biome){
+					case 'beach':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].sand]
+						for (let j = 0; j < soilDepth3; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].sand
+						}
+					break;
+					
+					case 'water':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].gravel]
+						for (let j = 0; j < soilDepth4; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].gravel
+						}
+					break;
+					
+					case 'desert':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].sand]
+						for (let j = 0; j < soilDepth2; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].sand
+						}
+					break;
+					
+					case 'jungle':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
+						for (let j = 1; j < soilDepth2; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt
+						}
+					break;
+					
+					case 'savanna':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
+						for (let j = 1; j < soilDepth4; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].acaciaPlanks
+						}
+					break;
+					
+					case 'tundra':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].whiteWool]
+						for (var j = 0; j < soilDepth2; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].whiteWool
+						}
+					break;
+					
+					case 'glacier':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lightBlueWool]
+						for (var j = 0; j < soilDepth3; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lightBlueWool
+						}
+					break;
+					
+					case 'taiga':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].sprucePlanks]
+						for (var j = 0; j < soilDepth; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].sprucePlanks
+						}
+					break;
+					
+					case 'plains':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
+						for (var j = 1; j < soilDepth; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt
+						}
+					break;
+					
+					case 'swamp':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].brownWool]
+						for (var j = 0; j < soilDepth3; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].brownWool
+						}
+					break;
+					
+					case 'forest':
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
+						for (var j = 1; j < soilDepth; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt
+						}
+					break;
+					
+					default:
+						groundBlocks = [_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass]
+						for (var j = 1; j < soilDepth; j++) {
+							groundBlocks[j] = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt
+						}
+					break;
+				}
+				
+				for(let j = this.tops[k * 16 + i]+1; j < 69; j++){
+					this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
+				}
+				
+				for (let a = 0; a < groundBlocks.length; a++) {
+					if (this.getBlock(i, ground - a, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air||this.getBlock(i, ground - a, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water) break
+					this.setBlock(i, ground - a, k, groundBlocks[a])
+				}
+				
+				for (let a = groundBlocks.length + 1; a < 4; a++) {
+					if (this.getBlock(i, ground - a, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air||this.getBlock(i, ground - a, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water) break
+					this.setBlock(i, ground - a, k, undergroundBlock)
+				}
+				
+				
+				if (biome === 'swamp' && world.getBlock(wx + 1, ground, wz) && world.getBlock(wx - 1, ground, wz) && world.getBlock(wx, ground, wz + 1) && world.getBlock(wx, ground, wz - 1)) {
+					this.setBlock(i, ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
+					if(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])()>0.5){
+						this.setBlock(i, ground - 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
+					}
+				}
+			}
+		}
+
+		this.sculpted = true
+	}
+	async populate(trees) {
+		const { world } = this
+		Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["randomSeed"])(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["hash"])(this.x, this.z) * 210000000)
+		let wx = 0, wz = 0, ground = 0, biome, top = 0, rand = 0, place = false, groundBlocks, soilDepth, soilDepth2, soilDepth3, soilDepth4, caveNoiseVal, caveNoiseVal2, caveNoiseVal3, undergroundBlock = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone, deepUndergroundBlock = _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone
+		for (let i = 0; i < 16; i++) {
+			for (let k = 0; k < 16; k++) {
+				wx = this.x + i
+				wz = this.z + k
+				
+				ground = this.tops[k * 16 + i]
+				biome = this.surfaceBiomes[k * 16 + i]
+				
+				if (trees && Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.005 && this.getBlock(i, ground, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass && ground > 75 && biome === 'forest') {
 
 					top = ground + floor(4.5 + Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(2.5))
 					rand = floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(4096))
 					let tree = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.6 ? _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].oakLog : ++top && _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].birchLog
+
+					//Center
+					for (let j = ground + 1; j <= top; j++) {
+						this.setBlock(i, j, k, tree)
+					}
+					this.setBlock(i, top + 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					this.setBlock(i, ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
+
+					//Bottom leaves
+					for (let x = -2; x <= 2; x++) {
+						for (let z = -2; z <= 2; z++) {
+							if (x || z) {
+								if ((x * z & 7) === 4) {
+									place = rand & 1
+									rand >>>= 1
+									if (place) {
+										world.spawnBlock(wx + x, top - 2, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+									}
+								}
+								else {
+									world.spawnBlock(wx + x, top - 2, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+								}
+							}
+						}
+					}
+
+					//2nd layer leaves
+					for (let x = -2; x <= 2; x++) {
+						for (let z = -2; z <= 2; z++) {
+							if (x || z) {
+								if ((x * z & 7) === 4) {
+									place = rand & 1
+									rand >>>= 1
+									if (place) {
+										world.spawnBlock(wx + x, top - 1, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+									}
+								}
+								else {
+									world.spawnBlock(wx + x, top - 1, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+								}
+							}
+						}
+					}
+
+					//3rd layer leaves
+					for (let x = -1; x <= 1; x++) {
+						for (let z = -1; z <= 1; z++) {
+							if (x || z) {
+								if (x & z) {
+									place = rand & 1
+									rand >>>= 1
+									if (place) {
+										world.spawnBlock(wx + x, top, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+									}
+								}
+								else {
+									world.spawnBlock(wx + x, top, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+								}
+							}
+						}
+					}
+
+					//Top leaves
+					world.spawnBlock(wx + 1, top + 1, wz, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					world.spawnBlock(wx, top + 1, wz - 1, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					world.spawnBlock(wx, top + 1, wz + 1, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					world.spawnBlock(wx - 1, top + 1, wz, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+				}
+
+				if (trees && Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.005 && this.getBlock(i, ground, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass && ground > 75 && biome === 'jungle') {
+
+					top = ground + floor(4.5 + Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(2.5))
+					rand = floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(4096))
+					let tree = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.7 ? _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].jungleLog : ++top && _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].oakLog
 
 					//Center
 					for (let j = ground + 1; j <= top; j++) {
