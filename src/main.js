@@ -2279,7 +2279,8 @@ async function MineKhan() {
 
 				if (this.generateQueue.length && !doneWork) {
 					let chunk = this.generateQueue.pop()
-					this.genChunk(chunk)
+					chunk.genChunk(superflat)
+					debug("Generate")
 					doneWork = true
 				}
 
@@ -2291,6 +2292,7 @@ async function MineKhan() {
 					}
 					else if (!chunk.populated) {
 						chunk.populate(trees)
+						debug("Populate")
 						this.populateQueue.pop()
 					}
 					doneWork = true

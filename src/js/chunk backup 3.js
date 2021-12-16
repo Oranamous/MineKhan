@@ -708,7 +708,7 @@ class Chunk {
 		await Promise.all(promises)
 		this.caves = true
 	}
-	async populate(trees) {
+	populate(trees) {
 		const { world } = this
 		randomSeed(hash(this.x, this.z) * 210000000)
 		let wx = 0, wz = 0, ground = 0, biome, top = 0, rand = 0, place = false
