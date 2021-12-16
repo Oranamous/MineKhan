@@ -1,5 +1,20 @@
 const { floor } = Math;
 
+function i1D(a, b, x) {
+	let output = (a - b) * (1 - x) + b;
+	return output;
+}
+
+function i2D(a, b, c, d, x, y) {
+	let output = i1D(i1D(a, b, x), i1D(c, d, x), y);
+	return output;
+}
+
+function i3D(a, b, c, d, e, f, g, h, x, y, z) {
+	let output = i1D(i2D(a, b, c, d, x, y), i2D(e, f, g, h, x, y), z);
+	return output;
+}
+
 function timeString(millis) {
 	if (millis > 300000000000 || !millis) {
 		return "never"
@@ -69,4 +84,4 @@ function compareArr(arr, out) {
 	return out
 }
 
-export { timeString, roundBits, compareArr };
+export { timeString, roundBits, compareArr, i1D, i2D, i3D };

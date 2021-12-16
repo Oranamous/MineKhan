@@ -2258,10 +2258,6 @@ async function MineKhan() {
 						await chunk.carveCaves()
 						debug("Carve caves")
 					}
-					if (!chunk.sculpted) {
-						await chunk.sculpt()
-						debug("Sculpt")
-					}
 					else if (!chunk.populated) {
 						await chunk.populate(trees)
 						debug("Populate")

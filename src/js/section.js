@@ -30,7 +30,7 @@ let sphere;
 function carveSphere(x, y, z, world) {
 	if (y > 3) {
 		for (let i = 0; i < sphere.length; i += 3) {
-			if(world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])!==blockIds.water&&world.getBlock(x + sphere[i], y + sphere[i + 1] + 1, z + sphere[i + 2])!==blockIds.water){
+			if(world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])!==blockIds.water&&world.getBlock(x + sphere[i], y + sphere[i + 1] + 1, z + sphere[i + 2])!==blockIds.water&&world.getBlock(x + sphere[i] + 1, y + sphere[i + 1], z + sphere[i + 2])!==blockIds.water&&world.getBlock(x + sphere[i] - 1, y + sphere[i + 1], z + sphere[i + 2])!==blockIds.water&&world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2] + 1)!==blockIds.water&&world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2] - 1)!==blockIds.water){
 				if(y + sphere[i + 1]>7){
 					world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], blockIds.air, true)
 				}
