@@ -1709,7 +1709,7 @@ async function MineKhan() {
 
 	let commands = new Map()
 	commands.set("ban", args => {
-		let username = args[0]
+		let username = args.join(" ")
 		if (!username) {
 			chat(`Please provide a username. Like /ban Willard`)
 			return
@@ -1777,6 +1777,7 @@ async function MineKhan() {
 				}))
 			}
 		}
+		let multiplayerError = ""
 		multiplayer.onmessage = msg => {
 			let packet = JSON.parse(msg.data)
 			if (packet.type === "setBlock") {
@@ -1820,6 +1821,9 @@ async function MineKhan() {
 				ent.velz = pos.vz || 0
 				packet.data.time = now
 			}
+			else if (packet.type === "error") {
+				multiplayerError = packet.data
+			}
 			else if (packet.type === "dc") {
 				chat(`${packet.author} has disconnected.`)
 				delete playerPositions[packet.author]
@@ -1840,11 +1844,11 @@ async function MineKhan() {
 
 		multiplayer.onclose = () => {
 			if (!host) {
-				alert("Connection lost!")
+				alert(`Connection lost! ${multiplayerError}`)
 				changeScene("main menu")
 			}
 			else {
-				alert("Connection lost! Willard probably restarted the server. You can re-open your world from the pause menu.")
+				alert(`Connection lost! ${multiplayerError || "Willard probably restarted the server. You can re-open your world from the pause menu."}`)
 			}
 			clearInterval(multiplayer.pos)
 			multiplayer = null
@@ -1925,6 +1929,34 @@ async function MineKhan() {
 			this.entities = []
 			this.eventQueue = []
 			this.lastChunk = ","
+		}
+		genChunk(chunk) {
+			let trueX = chunk.x
+			let trueZ = chunk.z
+
+			if (chunk.generated) {
+				return false
+			}
+
+			let smoothness = generator.smooth
+			let hilliness = generator.height
+			let gen = 0
+			for (let i = 0; i < 16; i++) {
+				for (let k = 0; k < 16; k++) {
+					gen = superflat ? 4 : round(noiseProfile.noise((trueX + i) * smoothness, (trueZ + k) * smoothness) * hilliness) + generator.extra
+					chunk.tops[k * 16 + i] = gen
+
+					chunk.setBlock(i, gen, k, blockIds.grass)
+					chunk.setBlock(i, gen - 1, k, blockIds.dirt)
+					chunk.setBlock(i, gen - 2, k, blockIds.dirt)
+					chunk.setBlock(i, gen - 3, k, blockIds.dirt)
+					for (let j = 1; j < gen - 3; j++) {
+						chunk.setBlock(i, j, k, blockIds.stone)
+					}
+					chunk.setBlock(i, 0, k, blockIds.bedrock)
+				}
+			}
+			chunk.generated = true
 		}
 		getAdjacentSubchunks(x, y, z, lights) {
 			let minChunkX = x - 16 >> 4
@@ -2247,8 +2279,7 @@ async function MineKhan() {
 
 				if (this.generateQueue.length && !doneWork) {
 					let chunk = this.generateQueue.pop()
-					chunk.genChunk(superflat)
-					debug("Generate")
+					this.genChunk(chunk)
 					doneWork = true
 				}
 
@@ -2259,8 +2290,7 @@ async function MineKhan() {
 						debug("Carve caves")
 					}
 					else if (!chunk.populated) {
-						await chunk.populate(trees)
-						debug("Populate")
+						chunk.populate(trees)
 						this.populateQueue.pop()
 					}
 					doneWork = true
@@ -2852,6 +2882,7 @@ async function MineKhan() {
 		Slider.all = []
 		const nothing = () => false
 		const always = () => true
+		let survival = false
 
 		// Main menu buttons
 		Button.add(width / 2, height / 2 - 20, 400, 40, "Singleplayer", "main menu", () => {
@@ -2880,9 +2911,13 @@ async function MineKhan() {
 			}
 			return superflat
 		})
-		Button.add(width / 2, 285, 300, 40, "Game Mode: Creative", "creation menu", nothing, always, "Coming Soon\n\nPlease stop asking for survival features. I don't want to half-implement anything, and I don't currently have the systems in place to create a full-featured survival mode. It'll come in due time.")
+		Button.add(width / 2, 285, 300, 40, ["Game Mode: Creative", "Game Mode: Survival"], "creation menu", r => survival = r === "Game Mode: Survival")
 		Button.add(width / 2, 335, 300, 40, "Difficulty: Peaceful", "creation menu", nothing, always, "Coming soon\n\nPlease stop asking for mobs. Adding them will take a very long time. I know a lot of people want them, so just be patient.")
 		Button.add(width / 2, height - 90, 300, 40, "Create New World", "creation menu", () => {
+			if (survival) {
+				window.open("https://www.minecraft.net/en-us/store/minecraft-java-edition", "_blank")
+				return
+			}
 			world = new World()
 			world.id = "" + now + (Math.random() * 1000000 | 0)
 			let name = boxCenterTop.value || "World"
@@ -3552,7 +3587,7 @@ async function MineKhan() {
 				play()
 			}
 		}
-		if (e.key === "Escape") {
+		else if (e.key === "Escape") {
 			e.preventDefault()
 			e.stopPropagation()
 			play()
