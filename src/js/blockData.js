@@ -300,7 +300,7 @@ const blockData = [
 	{ name: "polishedGranite" },
 	{ name: "light", textures: "nothing", lightLevel: 15, solid: false, icon: "glass", transparent: true, shadow: false },
 	{ name: "water", textures: "waterStill", semiTrans: true, transparent: true, solid: false, shadow: false},
-	{ name: "lava", textures: "lavaStill", transparent: true, solid: false, shadow: false}
+	{ name: "lava", textures: "lavaStill", lightLevel: 15, transparent: true, solid: false, shadow: false}
 	// I swear, if y'all don't stop asking about TNT every 5 minutes!
 	/* {
         name: "tnt",

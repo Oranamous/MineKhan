@@ -1,4 +1,16 @@
+import { blockIds } from "./blockData.js"
+import { biomes } from "./biomes.js"
 const { floor } = Math;
+
+function sortBiomes(temperature, moisture) {
+	return biomes.filter(arrayItem => arrayItem.temperature != "hardcoded" || arrayItem.temperature != "hardcoded").sort((a, b) => {
+		return Math.sqrt(Math.pow(a.temperature - temperature, 2) + Math.pow(a.moisture - moisture, 2)) - Math.sqrt(Math.pow(b.temperature - temperature, 2) + Math.pow(b.moisture - moisture, 2));
+	});
+}
+
+function nearestBiome(temperature, moisture) {
+	return sortBiomes(temperature, moisture)[0];
+}
 
 function i1D(a, b, x) {
 	let output = (a - b) * (1 - x) + b;
@@ -84,4 +96,4 @@ function compareArr(arr, out) {
 	return out
 }
 
-export { timeString, roundBits, compareArr, i1D, i2D, i3D };
+export { timeString, roundBits, compareArr, i1D, i2D, i3D, nearestBiome, sortBiomes };

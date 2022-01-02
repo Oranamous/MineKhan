@@ -1,7 +1,7 @@
 import { random, randomSeed, hash, noiseProfile } from "./random.js"
 import { blockData, blockIds } from "./blockData.js"
 import { Section } from "./section.js"
-import { sortBiomes, i1D, i2D, i3D } from "./utils.js"
+import { biomes, nearestBiome, sortBiomes, i1D, i2D, i3D } from "./utils.js"
 
 const { floor, min, max, round, sin, cos, abs } = Math;
 
@@ -45,23 +45,47 @@ class Chunk {
 		let moisture
 		let height
 		let biome
-		let biomes
+		let filteredBiomes = []
 		let groundBlocks = []
 		let soilDepth
+		let soilDepth2
+		let soilDepth3
+		let soilDepth4
 		let caveNoiseVal
 		let caveNoiseVal2
 		let caveNoiseVal3
+		let biomeThreshhold = 0.05
 		let temperatureScale = 0.001
 		let moistureScale = 0.005
+		let baseHeight = 48
 		let minHeight = 40
 		let maxHeight = 240
+		let horizontalScale = 0.005
+		let horizontalVariationScale = 0.005
+		let verticalVariationScale = 0.001
 		let riverScale = 0.0018
-		let noiseVal
-		if (superflat === true) {
+		let verticalScale = 1024
+		let heightnodes = []
+		let nodeHeight
+		let nodeVal
+		for (let i = 0; i < 16; i++) {
+			for (let k = 0; k < 16; k++) {
+				temperature = superflat ? 0 : (noiseProfile.noise((trueX + i) * temperatureScale, (trueZ + k) * temperatureScale, 16)-0.5)
+				moisture = superflat ? 0 : (noiseProfile.noise((trueX + i) * moistureScale, (trueZ + k) * moistureScale, 17)-0.5)
+				temperature += random(-0.001, 0.001)
+				moisture += random(-0.001, 0.001)
+				
+				biome = nearestBiome(temperature, moisture);
+				
+				this.surfaceBiomes[k * 16 + i] = biome;
+			}
+		}
+		if (superflat) {
 			for (let i = 0; i < 16; i++) {
 				for (let k = 0; k < 16; k++) {
 					height = 4;
 					this.tops[k * 16 + i] = height;
+					biome = this.surfaceBiomes[k * 16 + i];
 					this.setBlock(i, 0, k, blockIds.bedrock);
 					for (let a = 1; a < height; a++) {
 						this.setBlock(i, a, k, blockIds.dirt)
@@ -71,42 +95,58 @@ class Chunk {
 			}
 		}
 		else {
+			for (let i = 0; i < 3; i++) {
+				for (let j = 0; j < 3; j++) {
+					let nodeBiome = 0;
+					temperature = noiseProfile.noise((trueX + (i * 8)) * temperatureScale, (trueZ + (j * 8)) * temperatureScale, 16)-0.5;
+					moisture = noiseProfile.noise((trueX + (i * 8)) * moistureScale, (trueZ + (j * 8)) * moistureScale, 17)-0.5;
+					
+					biome = nearestBiome(temperature, moisture);
+					
+					//Mountain Noise
+					nodeVal = noiseProfile.noise((trueX + (i * 8)) * biome.roughness, (trueZ + (j * 8)) * biome.roughness);
+					if(nodeVal>0.5){
+						nodeVal = 1 - nodeVal
+					}
+					nodeVal *= 2
+					
+					nodeHeight = nodeVal * biome.tallness + biome.elevation
+					
+					if(nodeHeight > maxHeight){nodeHeight = maxHeight;}
+					if(nodeHeight < minHeight){nodeHeight = minHeight;}
+					
+					heightnodes[i * 3 + j] = nodeHeight
+				}
+			}
 			for (let i = 0; i < 16; i++) {
 				for (let k = 0; k < 16; k++) {
-					//Find biome info
-					temperature = superflat ? 0 : (noiseProfile.noise((trueX + i) * temperatureScale, (trueZ + k) * temperatureScale, 16)-0.5)
-					moisture = superflat ? 0 : (noiseProfile.noise((trueX + i) * moistureScale, (trueZ + k) * moistureScale, 17)-0.5)
-					temperature += random(-0.001, 0.001)
-					moisture += random(-0.001, 0.001)
-					biomes = sortBiomes(temperature, moisture);
-					biome = biomes[0];
-					this.surfaceBiomes[k * 16 + i] = biome;
-					
-					//Interpolate biome properties
-					//biome.elevation = i1D(biomes[1].elevation, biomes[0].elevation, ((biomes[1].temperature - (temperature + 0.5)) + (biomes[1].moisture - (moisture + 0.5)))/2)
-					//biome.tallness = i1D(biomes[1].tallness, biomes[0].tallness, ((biomes[1].temperature - (temperature + 0.5)) + (biomes[1].moisture - (moisture + 0.5)))/2)
-					//biome.roughness = i1D(biomes[1].roughness, biomes[0].roughness, ((biomes[1].temperature - (temperature + 0.5)) + (biomes[1].moisture - (moisture + 0.5)))/2)
-					
-					//Generate height value
-					noiseVal = noiseProfile.noise((trueX + i) * biome.roughness, (trueZ + k) * biome.roughness);
-					if(noiseVal>0.5){
-						noiseVal = 1 - noiseVal
+					height = minHeight;
+					if(i<8){
+						if(k<8){
+							height = i2D(heightnodes[0], heightnodes[3], heightnodes[1], heightnodes[4], i/8, k/8);
+						}
+						else{
+							height = i2D(heightnodes[1], heightnodes[4], heightnodes[2], heightnodes[5], i/8, (k-8)/8);
+						}
 					}
-					noiseVal *= 2
-					
-					if (superflat === "amplified") {
-						height = noiseVal * biome.tallness * 4 + biome.elevation - 16;
+					else{
+						if(k<8){
+							height = i2D(heightnodes[3], heightnodes[6], heightnodes[4], heightnodes[7], (i-8)/8, k/8);
+						}
+						else{
+							height = i2D(heightnodes[4], heightnodes[7], heightnodes[5], heightnodes[8], (i-8)/8, (k-8)/8);
+						}
 					}
-					else {
-						height = noiseVal * biome.tallness + biome.elevation;
-					}
-					
-					if(height > maxHeight){height = maxHeight;}
-					if(height < minHeight){height = minHeight;}
-					
 					this.tops[k * 16 + i] = floor(height);
+					//this.tops[k * 16 + i] = (k * 16 + i) / 2 + 16
+				}
+			}
+			for (let i = 0; i < 16; i++) {
+				for (let k = 0; k < 16; k++) {
 					
-					//Build the actual blocks
+					height = this.tops[k * 16 + i];
+					biome = this.surfaceBiomes[k * 16 + i];
+					
 					this.setBlock(i, 0, k, blockIds.bedrock)
 					for (let j = 1; j < height + 1; j++) {
 						caveNoiseVal = noiseProfile.noise((trueX + i)*0.01, j*0.01, (trueZ + k)*0.01);
@@ -138,8 +178,8 @@ class Chunk {
 					
 					if (height > minHeight) {
 						for (let a = 0; a < groundBlocks.length; a++) {
-							if (this.getBlock(i, height + 1 - a, k) === blockIds.air||this.getBlock(i, height + 1 - a, k) === blockIds.water) break
-							this.setBlock(i, height + 1 - a, k, groundBlocks[a])
+							if (this.getBlock(i, height - a, k) === blockIds.air||this.getBlock(i, height - a, k) === blockIds.water) break
+							this.setBlock(i, height - a, k, groundBlocks[a])
 						}
 					}
 				}
@@ -614,10 +654,10 @@ class Chunk {
 						this.surfaces.push([i, j, k, true]);
 					}
 				}
-				/*for(let a = 0; a < this.surfaces.length; a++) {
+				for(let a = 0; a < this.surfaces.length; a++) {
 					if(this.surfaces[a][3]){this.setBlock(this.surfaces[a][0], this.surfaces[a][1], this.surfaces[a][2], blockIds.orangeWool)}
 					else{this.setBlock(this.surfaces[a][0], this.surfaces[a][1], this.surfaces[a][2], blockIds.blueWool)}
-				}*/
+				}
 			}
 		}
 		this.populated = true

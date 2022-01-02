@@ -224,14 +224,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _js_3Dutils_js__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(13);
 /* harmony import */ var _js_utils_js__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(14);
 /* harmony import */ var _js_blockData_js__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(15);
-/* harmony import */ var _js_indexDB_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(16);
-/* harmony import */ var _js_shapes_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(17);
-/* harmony import */ var _js_glUtils_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(18);
-/* harmony import */ var _js_texture_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(19);
-/* harmony import */ var _js_section_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(20);
-/* harmony import */ var _js_chunk_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(21);
-/* harmony import */ var _js_item_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(22);
-/* harmony import */ var _js_player_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(24);
+/* harmony import */ var _js_indexDB_js__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(17);
+/* harmony import */ var _js_shapes_js__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(18);
+/* harmony import */ var _js_glUtils_js__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(19);
+/* harmony import */ var _js_texture_js__WEBPACK_IMPORTED_MODULE_15__ = __webpack_require__(20);
+/* harmony import */ var _js_section_js__WEBPACK_IMPORTED_MODULE_16__ = __webpack_require__(21);
+/* harmony import */ var _js_chunk_js__WEBPACK_IMPORTED_MODULE_17__ = __webpack_require__(22);
+/* harmony import */ var _js_item_js__WEBPACK_IMPORTED_MODULE_18__ = __webpack_require__(23);
+/* harmony import */ var _js_player_js__WEBPACK_IMPORTED_MODULE_19__ = __webpack_require__(25);
 
 
 // GLSL Shader code
@@ -2513,7 +2513,8 @@ async function MineKhan() {
 
 				if (this.generateQueue.length && !doneWork) {
 					let chunk = this.generateQueue.pop()
-					this.genChunk(chunk)
+					chunk.genChunk(superflat)
+					debug("Generate")
 					doneWork = true
 				}
 
@@ -2525,6 +2526,7 @@ async function MineKhan() {
 					}
 					else if (!chunk.populated) {
 						chunk.populate(trees)
+						debug("Populate")
 						this.populateQueue.pop()
 					}
 					doneWork = true
@@ -3116,6 +3118,7 @@ async function MineKhan() {
 		Slider.all = []
 		const nothing = () => false
 		const always = () => true
+		let survival = false
 
 		// Main menu buttons
 		Button.add(width / 2, height / 2 - 20, 400, 40, "Singleplayer", "main menu", () => {
@@ -3129,7 +3132,12 @@ async function MineKhan() {
 		Button.add(width / 2, height / 2 + 90, 400, 40, "Options", "main menu", () => changeScene("options"))
 
 		// Creation menu buttons
-		Button.add(width / 2, 135, 300, 40, ["World Type: Normal", "World Type: Superflat"], "creation menu", r => superflat = r === "World Type: Superflat")
+		Button.add(width / 2, 135, 300, 40, ["World Type: Normal", "World Type: Superflat", "World Type: Amplified"], "creation menu", r => function() {
+			superflat = r === "World Type: Superflat"
+			if(r === "World Type: Amplified"){
+				superflat = "amplified"
+			}
+		})
 		Button.add(width / 2, 185, 300, 40, ["Trees: On", "Trees: Off"], "creation menu", r => trees = r === "Trees: On", function() {
 			if (superflat) {
 				this.index = 1
@@ -3144,9 +3152,13 @@ async function MineKhan() {
 			}
 			return superflat
 		})
-		Button.add(width / 2, 285, 300, 40, "Game Mode: Creative", "creation menu", nothing, always, "Coming Soon\n\nPlease stop asking for survival features. I don't want to half-implement anything, and I don't currently have the systems in place to create a full-featured survival mode. It'll come in due time.")
+		Button.add(width / 2, 285, 300, 40, ["Game Mode: Creative", "Game Mode: Survival"], "creation menu", r => survival = r === "Game Mode: Survival")
 		Button.add(width / 2, 335, 300, 40, "Difficulty: Peaceful", "creation menu", nothing, always, "Coming soon\n\nPlease stop asking for mobs. Adding them will take a very long time. I know a lot of people want them, so just be patient.")
 		Button.add(width / 2, height - 90, 300, 40, "Create New World", "creation menu", () => {
+			if (survival) {
+				window.open("https://www.minecraft.net/en-us/store/minecraft-java-edition", "_blank")
+				return
+			}
 			world = new World()
 			world.id = "" + now + (Math.random() * 1000000 | 0)
 			let name = boxCenterTop.value || "World"
@@ -4681,7 +4693,7 @@ window.onload = async function() {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("attribute vec3  aVertex;\r\nattribute vec2  aTexture;\r\nattribute float aShadow;\r\nattribute float aSkylight;\r\nattribute float aBlocklight;\r\nvarying vec2  vTexture;\r\nvarying float vShadow;\r\nvarying float vFog;\r\nuniform mat4 uView;\r\nuniform float uDist;\r\nuniform vec3 uPos;\r\nuniform float uTime;\r\n\r\nvoid main() {\r\n    vTexture = aTexture;\r\n    // If you are going to change this final lightlevel calculation\r\n    // you have to change line 4487 as well since it calculates lightlevel of entity based on this\r\n    vShadow = aShadow * min(max(aSkylight * uTime, aBlocklight) * 0.9 + 0.1, 1.0);\r\n    gl_Position = uView * vec4(aVertex, 1.0);\r\n\r\n    float range = max(uDist / 5.0, 8.0);\r\n    vFog = clamp((length(uPos.xz - aVertex.xz) - uDist + range) / range, 0.0, 1.0);\r\n}");
+/* harmony default export */ __webpack_exports__["default"] = ("attribute vec3  aVertex;\r\nattribute vec2  aTexture;\r\nattribute float aShadow;\r\nattribute float aSkylight;\r\nattribute float aBlocklight;\r\nvarying vec2  vTexture;\r\nvarying float vShadow;\r\nvarying float vFog;\r\nuniform mat4 uView;\r\nuniform float uDist;\r\nuniform vec3 uPos;\r\nuniform float uTime;\r\n\r\nvoid main() {\r\n    vTexture = aTexture;\r\n    // If you are going to change this final lightlevel calculation\r\n    // you have to change line 4487 as well since it calculates lightlevel of entity based on this\r\n    vShadow = aShadow * min(max(aSkylight * uTime, aBlocklight) * 0.9 + 0.1, 1.0);\r\n    vec4 pos = uView * vec4(aVertex, 1.0);\r\n    \r\n    float range = max(uDist / 5.0, 8.0);\r\n    vFog = clamp((length(uPos.xz - aVertex.xz) - uDist + range) / range, 0.0, 1.0);\r\n    pos.y -= 0.0;\r\n    gl_Position = pos;\r\n}");
 
 /***/ }),
 /* 2 */
@@ -4689,7 +4701,7 @@ __webpack_require__.r(__webpack_exports__);
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("#ifdef GL_FRAGMENT_PRECISION_HIGH\r\n    precision highp float;\r\n#else\r\n    precision mediump float;\r\n#endif\r\n\r\nuniform sampler2D uSampler;\r\nuniform float uTime;\r\nuniform bool uTrans;\r\nuniform vec3 uSky; // vec3(0.33, 0.54, 0.72)\r\nvarying float vShadow;\r\nvarying vec2 vTexture;\r\nvarying float vFog;\r\n\r\nvoid main(){\r\n    vec4 color = texture2D(uSampler, vTexture);\r\n    gl_FragColor = vec4(mix(color.rgb * vShadow, uSky * uTime, vFog), color.a);\r\n    if (!uTrans && gl_FragColor.a != 1.0) discard;\r\n    else if (uTrans && gl_FragColor.a == 1.0) discard;\r\n}");
+/* harmony default export */ __webpack_exports__["default"] = ("  \r\n#ifdef GL_FRAGMENT_PRECISION_HIGH\r\n    precision highp float;\r\n#else\r\n    precision mediump float;\r\n#endif\r\n\r\nuniform sampler2D uSampler;\r\nuniform float uTime;\r\nuniform bool uTrans;\r\nuniform vec3 uSky; // vec3(0.33, 0.54, 0.72)\r\nvarying float vShadow;\r\nvarying vec2 vTexture;\r\nvarying float vFog;\r\n\r\nvoid main(){\r\n    vec4 color = texture2D(uSampler, vTexture);\r\n    gl_FragColor = vec4(mix(color.rgb * vShadow, uSky * uTime, vFog), color.a);\r\n    if (!uTrans && gl_FragColor.a != 1.0) discard;\r\n    else if (uTrans && gl_FragColor.a == 1.0) discard;\r\n}");
 
 /***/ }),
 /* 3 */
@@ -4729,7 +4741,7 @@ __webpack_require__.r(__webpack_exports__);
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
-/* harmony default export */ __webpack_exports__["default"] = ("function Worker() {\n\tconst { abs, floor } = Math\n\n\tfunction openSimplexNoise(clientSeed) {\n\t\tconst toNums = function(s) {\n\t\t\treturn s.split(\",\").map(function(s) {\n\t\t\t\treturn new Uint8Array(s.split(\"\").map(function(v) {\n\t\t\t\t\treturn Number(v)\n\t\t\t\t}))\n\t\t\t})\n\t\t}\n\t\tconst decode = function(m, r, s) {\n\t\t\treturn new Int8Array(s.split(\"\").map(function(v) {\n\t\t\t\treturn parseInt(v, r) + m\n\t\t\t}))\n\t\t}\n\t\tconst toNumsB32 = function(s) {\n\t\t\treturn s.split(\",\").map(function(s) {\n\t\t\t\treturn parseInt(s, 32)\n\t\t\t})\n\t\t}\n\t\tconst NORM_3D = 1.0 / 206.0\n\t\tconst SQUISH_3D = 1 / 3\n\t\tconst STRETCH_3D = -1 / 6\n\t\tvar base3D = toNums(\"0000110010101001,2110210120113111,110010101001211021012011\")\n\t\tconst gradients3D = decode(-11, 23, \"0ff7mf7fmmfffmfffm07f70f77mm7ff0ff7m0f77m77f0mf7fm7ff0077707770m77f07f70\")\n\t\tvar lookupPairs3D = function() {\n\t\t\treturn new Uint16Array(toNumsB32(\"0,2,1,1,2,2,5,1,6,0,7,0,10,2,12,2,41,1,45,1,50,5,51,5,g6,0,g7,0,h2,4,h6,4,k5,3,k7,3,l0,5,l1,5,l2,4,l5,3,l6,4,l7,3,l8,d,l9,d,la,c,ld,e,le,c,lf,e,m8,k,ma,i,p9,l,pd,n,q8,k,q9,l,15e,j,15f,m,16a,i,16e,j,19d,n,19f,m,1a8,f,1a9,h,1aa,f,1ad,h,1ae,g,1af,g,1ag,b,1ah,a,1ai,b,1al,a,1am,9,1an,9,1bg,b,1bi,b,1eh,a,1el,a,1fg,8,1fh,8,1qm,9,1qn,9,1ri,7,1rm,7,1ul,6,1un,6,1vg,8,1vh,8,1vi,7,1vl,6,1vm,7,1vn,6\"))\n\t\t}\n\t\tvar p3D = decode(-1, 5, \"112011210110211120110121102132212220132122202131222022243214231243124213241324123222113311221213131221123113311112202311112022311112220342223113342223311342223131322023113322023311320223113320223131322203311322203131\")\n\t\tconst setOf = function(count) {\n\t\t\tvar a = [], i = 0;\n\t\t\twhile (i < count) {\n\t\t\t\ta.push(i++)\n\t\t\t}\n\t\t\treturn a\n\t\t}\n\t\tconst doFor = function(count, cb) {\n\t\t\tvar i = 0;\n\t\t\twhile (i < count && cb(i++) !== true);\n\t\t}\n\n\t\tfunction shuffleSeed(seed,count){\n\t\t\tseed = seed * 1664525 + 1013904223 | 0\n\t\t\tcount -= 1\n\t\t\treturn count > 0 ? shuffleSeed(seed, count) : seed\n\t\t}\n\t\tconst types = {\n\t\t\t_3D : {\n\t\t\t\tbase : base3D,\n\t\t\t\tsquish : SQUISH_3D,\n\t\t\t\tdimensions : 3,\n\t\t\t\tpD : p3D,\n\t\t\t\tlookup : lookupPairs3D,\n\t\t\t}\n\t\t}\n\n\t\tfunction createContribution(type, baseSet, index) {\n\t\t\tvar i = 0\n\t\t\tconst multiplier = baseSet[index ++]\n\t\t\tconst c = { next : undefined }\n\t\t\twhile(i < type.dimensions) {\n\t\t\t\tconst axis = \"xyzw\"[i]\n\t\t\t\tc[axis + \"sb\"] = baseSet[index + i]\n\t\t\t\tc[\"d\" + axis] = - baseSet[index + i++] - multiplier * type.squish\n\t\t\t}\n\t\t\treturn c\n\t\t}\n\n\t\tfunction createLookupPairs(lookupArray, contributions){\n\t\t\tvar i\n\t\t\tconst a = lookupArray()\n\t\t\tconst res = new Map()\n\t\t\tfor (i = 0; i < a.length; i += 2) {\n\t\t\t\tres.set(a[i], contributions[a[i + 1]]);\n\t\t\t}\n\t\t\treturn res\n\t\t}\n\n\t\tfunction createContributionArray(type) {\n\t\t\tconst conts = []\n\t\t\tconst d = type.dimensions\n\t\t\tconst baseStep = d * d\n\t\t\tvar k, i = 0\n\t\t\twhile (i < type.pD.length) {\n\t\t\t\tconst baseSet = type.base[type.pD[i]]\n\t\t\t\tlet previous, current\n\t\t\t\tk = 0\n\t\t\t\tdo {\n\t\t\t\t\tcurrent = createContribution(type, baseSet, k)\n\t\t\t\t\tif (!previous) {\n\t\t\t\t\t\tconts[i / baseStep] = current;\n\t\t\t\t\t}\n\t\t\t\t\telse {\n\t\t\t\t\t\tprevious.next = current;\n\t\t\t\t\t}\n\t\t\t\t\tprevious = current\n\t\t\t\t\tk += d + 1\n\t\t\t\t} while(k < baseSet.length)\n\n\t\t\t\tcurrent.next = createContribution(type, type.pD, i + 1)\n\t\t\t\tif (d >= 3) {\n\t\t\t\t\tcurrent.next.next = createContribution(type, type.pD, i + d + 2)\n\t\t\t\t}\n\t\t\t\tif (d === 4) {\n\t\t\t\t\tcurrent.next.next.next = createContribution(type, type.pD, i + 11)\n\t\t\t\t}\n\t\t\t\ti += baseStep\n\t\t\t}\n\t\t\tconst result = [conts, createLookupPairs(type.lookup, conts)]\n\t\t\ttype.base = undefined\n\t\t\ttype.lookup = undefined\n\t\t\treturn result\n\t\t}\n\n\t\tlet temp = createContributionArray(types._3D)\n\t\tconst lookup3D = temp[1]\n\t\tconst perm = new Uint8Array(256)\n\t\tconst perm3D = new Uint8Array(256)\n\t\tconst source = new Uint8Array(setOf(256))\n\t\tvar seed = shuffleSeed(clientSeed, 3)\n\t\tdoFor(256, function(i) {\n\t\t\ti = 255 - i\n\t\t\tseed = shuffleSeed(seed, 1)\n\t\t\tvar r = (seed + 31) % (i + 1)\n\t\t\tr += r < 0 ? i + 1 : 0\n\t\t\tperm[i] = source[r]\n\t\t\tperm3D[i] = perm[i] % 24 * 3\n\t\t\tsource[r] = source[i]\n\t\t})\n\t\tbase3D = undefined\n\t\tlookupPairs3D = undefined\n\t\tp3D = undefined\n\n\t\treturn function(x, y, z) {\n\t\t\tconst pD = perm3D\n\t\t\tconst p = perm\n\t\t\tconst g = gradients3D\n\t\t\tconst stretchOffset = (x + y + z) * STRETCH_3D\n\t\t\tconst xs = x + stretchOffset, ys = y + stretchOffset, zs = z + stretchOffset\n\t\t\tconst xsb = floor(xs), ysb = floor(ys), zsb = floor(zs)\n\t\t\tconst squishOffset\t= (xsb + ysb + zsb) * SQUISH_3D\n\t\t\tconst dx0 = x - (xsb + squishOffset), dy0 = y - (ysb + squishOffset), dz0 = z - (zsb + squishOffset)\n\t\t\tconst xins = xs - xsb, yins = ys - ysb, zins = zs - zsb\n\t\t\tconst inSum = xins + yins + zins\n\t\t\tvar c = lookup3D.get(\n\t\t\t\tyins - zins + 1\n\t\t\t\t\t| xins - yins + 1 << 1\n\t\t\t\t\t| xins - zins + 1 << 2\n\t\t\t\t\t| inSum << 3\n\t\t\t\t\t| inSum + zins << 5\n\t\t\t\t\t| inSum + yins << 7\n\t\t\t\t\t| inSum + xins << 9\n\t\t\t)\n\t\t\tvar i, value = 0\n\t\t\twhile (c !== undefined) {\n\t\t\t\tconst dx = dx0 + c.dx, dy = dy0 + c.dy, dz = dz0 + c.dz\n\t\t\t\tlet attn = 2 - dx * dx - dy * dy - dz * dz\n\t\t\t\tif (attn > 0) {\n\t\t\t\t\ti = pD[(p[xsb + c.xsb & 0xFF] + (ysb + c.ysb) & 0xFF) + (zsb + c.zsb) & 0xFF]\n\t\t\t\t\tattn *= attn\n\t\t\t\t\tvalue += attn * attn * (g[i++] * dx + g[i++] * dy + g[i] * dz)\n\t\t\t\t}\n\t\t\t\tc = c.next\n\t\t\t}\n\t\t\treturn value * NORM_3D + 0.5\n\t\t}\n\t}\n\n\tlet noise\n\tconst smooth = 0.02\n\tconst caveSize = 0.0055\n\tfunction isCave(x, y, z) {\n\t\t// Generate a 3D rigid multifractal noise shell.\n\t\t// Then generate another one with different coordinates.\n\t\t// Overlay them on top of each other, and the overlapping parts should form a cave-like structure.\n\t\t// This is extremely slow, and requires generating 2 noise values for every single block in the world.\n\t\t// TODO: replace with a crawler system of some sort, that will never rely on a head position in un-generated chunks.\n\n\t\tlet cave1 = abs(0.5 - noise(x * smooth, y * smooth, z * smooth)) < caveSize\n\t\tlet cave2 = abs(0.5 - noise(y * smooth, z * smooth, x * smooth)) < caveSize\n\t\treturn cave1 && cave2\n\t}\n\n\tconst subChunk = new Int8Array(16 * 16 * 16)\n\tself.onmessage = function(e) {\n\n\t\tif (e.data && e.data.seed) {\n\t\t\tnoise = openSimplexNoise(e.data.seed)\n\t\t\tself.postMessage(e.data)\n\t\t}\n\t\tif (e.data && e.data.caves) {\n\t\t\tconst { x, y, z } = e.data\n\t\t\tfor (let X = 0; X < 16; X++) {\n\t\t\t\tfor (let Y = 0; Y < 16; Y++) {\n\t\t\t\t\tfor (let Z = 0; Z < 16; Z++) {\n\t\t\t\t\t\tsubChunk[X * 256 + Y * 16 + Z] = isCave(X + x, Y + y, Z + z) | 0\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t}\n\n\t\t\tself.postMessage({\n\t\t\t\tjobId: e.data.jobId,\n\t\t\t\tcaves: subChunk,\n\t\t\t})\n\t\t}\n\t}\n}\n\nWorker()");
+/* harmony default export */ __webpack_exports__["default"] = ("function Worker() {\r\n\tconst { abs, floor } = Math\r\n\r\n\tfunction openSimplexNoise(clientSeed) {\r\n\t\tconst toNums = function(s) {\r\n\t\t\treturn s.split(\",\").map(function(s) {\r\n\t\t\t\treturn new Uint8Array(s.split(\"\").map(function(v) {\r\n\t\t\t\t\treturn Number(v)\r\n\t\t\t\t}))\r\n\t\t\t})\r\n\t\t}\r\n\t\tconst decode = function(m, r, s) {\r\n\t\t\treturn new Int8Array(s.split(\"\").map(function(v) {\r\n\t\t\t\treturn parseInt(v, r) + m\r\n\t\t\t}))\r\n\t\t}\r\n\t\tconst toNumsB32 = function(s) {\r\n\t\t\treturn s.split(\",\").map(function(s) {\r\n\t\t\t\treturn parseInt(s, 32)\r\n\t\t\t})\r\n\t\t}\r\n\t\tconst NORM_3D = 1.0 / 206.0\r\n\t\tconst SQUISH_3D = 1 / 3\r\n\t\tconst STRETCH_3D = -1 / 6\r\n\t\tvar base3D = toNums(\"0000110010101001,2110210120113111,110010101001211021012011\")\r\n\t\tconst gradients3D = decode(-11, 23, \"0ff7mf7fmmfffmfffm07f70f77mm7ff0ff7m0f77m77f0mf7fm7ff0077707770m77f07f70\")\r\n\t\tvar lookupPairs3D = function() {\r\n\t\t\treturn new Uint16Array(toNumsB32(\"0,2,1,1,2,2,5,1,6,0,7,0,10,2,12,2,41,1,45,1,50,5,51,5,g6,0,g7,0,h2,4,h6,4,k5,3,k7,3,l0,5,l1,5,l2,4,l5,3,l6,4,l7,3,l8,d,l9,d,la,c,ld,e,le,c,lf,e,m8,k,ma,i,p9,l,pd,n,q8,k,q9,l,15e,j,15f,m,16a,i,16e,j,19d,n,19f,m,1a8,f,1a9,h,1aa,f,1ad,h,1ae,g,1af,g,1ag,b,1ah,a,1ai,b,1al,a,1am,9,1an,9,1bg,b,1bi,b,1eh,a,1el,a,1fg,8,1fh,8,1qm,9,1qn,9,1ri,7,1rm,7,1ul,6,1un,6,1vg,8,1vh,8,1vi,7,1vl,6,1vm,7,1vn,6\"))\r\n\t\t}\r\n\t\tvar p3D = decode(-1, 5, \"112011210110211120110121102132212220132122202131222022243214231243124213241324123222113311221213131221123113311112202311112022311112220342223113342223311342223131322023113322023311320223113320223131322203311322203131\")\r\n\t\tconst setOf = function(count) {\r\n\t\t\tvar a = [], i = 0;\r\n\t\t\twhile (i < count) {\r\n\t\t\t\ta.push(i++)\r\n\t\t\t}\r\n\t\t\treturn a\r\n\t\t}\r\n\t\tconst doFor = function(count, cb) {\r\n\t\t\tvar i = 0;\r\n\t\t\twhile (i < count && cb(i++) !== true);\r\n\t\t}\r\n\r\n\t\tfunction shuffleSeed(seed,count){\r\n\t\t\tseed = seed * 1664525 + 1013904223 | 0\r\n\t\t\tcount -= 1\r\n\t\t\treturn count > 0 ? shuffleSeed(seed, count) : seed\r\n\t\t}\r\n\t\tconst types = {\r\n\t\t\t_3D : {\r\n\t\t\t\tbase : base3D,\r\n\t\t\t\tsquish : SQUISH_3D,\r\n\t\t\t\tdimensions : 3,\r\n\t\t\t\tpD : p3D,\r\n\t\t\t\tlookup : lookupPairs3D,\r\n\t\t\t}\r\n\t\t}\r\n\r\n\t\tfunction createContribution(type, baseSet, index) {\r\n\t\t\tvar i = 0\r\n\t\t\tconst multiplier = baseSet[index ++]\r\n\t\t\tconst c = { next : undefined }\r\n\t\t\twhile(i < type.dimensions) {\r\n\t\t\t\tconst axis = \"xyzw\"[i]\r\n\t\t\t\tc[axis + \"sb\"] = baseSet[index + i]\r\n\t\t\t\tc[\"d\" + axis] = - baseSet[index + i++] - multiplier * type.squish\r\n\t\t\t}\r\n\t\t\treturn c\r\n\t\t}\r\n\r\n\t\tfunction createLookupPairs(lookupArray, contributions){\r\n\t\t\tvar i\r\n\t\t\tconst a = lookupArray()\r\n\t\t\tconst res = new Map()\r\n\t\t\tfor (i = 0; i < a.length; i += 2) {\r\n\t\t\t\tres.set(a[i], contributions[a[i + 1]]);\r\n\t\t\t}\r\n\t\t\treturn res\r\n\t\t}\r\n\r\n\t\tfunction createContributionArray(type) {\r\n\t\t\tconst conts = []\r\n\t\t\tconst d = type.dimensions\r\n\t\t\tconst baseStep = d * d\r\n\t\t\tvar k, i = 0\r\n\t\t\twhile (i < type.pD.length) {\r\n\t\t\t\tconst baseSet = type.base[type.pD[i]]\r\n\t\t\t\tlet previous, current\r\n\t\t\t\tk = 0\r\n\t\t\t\tdo {\r\n\t\t\t\t\tcurrent = createContribution(type, baseSet, k)\r\n\t\t\t\t\tif (!previous) {\r\n\t\t\t\t\t\tconts[i / baseStep] = current;\r\n\t\t\t\t\t}\r\n\t\t\t\t\telse {\r\n\t\t\t\t\t\tprevious.next = current;\r\n\t\t\t\t\t}\r\n\t\t\t\t\tprevious = current\r\n\t\t\t\t\tk += d + 1\r\n\t\t\t\t} while(k < baseSet.length)\r\n\r\n\t\t\t\tcurrent.next = createContribution(type, type.pD, i + 1)\r\n\t\t\t\tif (d >= 3) {\r\n\t\t\t\t\tcurrent.next.next = createContribution(type, type.pD, i + d + 2)\r\n\t\t\t\t}\r\n\t\t\t\tif (d === 4) {\r\n\t\t\t\t\tcurrent.next.next.next = createContribution(type, type.pD, i + 11)\r\n\t\t\t\t}\r\n\t\t\t\ti += baseStep\r\n\t\t\t}\r\n\t\t\tconst result = [conts, createLookupPairs(type.lookup, conts)]\r\n\t\t\ttype.base = undefined\r\n\t\t\ttype.lookup = undefined\r\n\t\t\treturn result\r\n\t\t}\r\n\r\n\t\tlet temp = createContributionArray(types._3D)\r\n\t\tconst lookup3D = temp[1]\r\n\t\tconst perm = new Uint8Array(256)\r\n\t\tconst perm3D = new Uint8Array(256)\r\n\t\tconst source = new Uint8Array(setOf(256))\r\n\t\tvar seed = shuffleSeed(clientSeed, 3)\r\n\t\tdoFor(256, function(i) {\r\n\t\t\ti = 255 - i\r\n\t\t\tseed = shuffleSeed(seed, 1)\r\n\t\t\tvar r = (seed + 31) % (i + 1)\r\n\t\t\tr += r < 0 ? i + 1 : 0\r\n\t\t\tperm[i] = source[r]\r\n\t\t\tperm3D[i] = perm[i] % 24 * 3\r\n\t\t\tsource[r] = source[i]\r\n\t\t})\r\n\t\tbase3D = undefined\r\n\t\tlookupPairs3D = undefined\r\n\t\tp3D = undefined\r\n\r\n\t\treturn function(x, y, z) {\r\n\t\t\tconst pD = perm3D\r\n\t\t\tconst p = perm\r\n\t\t\tconst g = gradients3D\r\n\t\t\tconst stretchOffset = (x + y + z) * STRETCH_3D\r\n\t\t\tconst xs = x + stretchOffset, ys = y + stretchOffset, zs = z + stretchOffset\r\n\t\t\tconst xsb = floor(xs), ysb = floor(ys), zsb = floor(zs)\r\n\t\t\tconst squishOffset\t= (xsb + ysb + zsb) * SQUISH_3D\r\n\t\t\tconst dx0 = x - (xsb + squishOffset), dy0 = y - (ysb + squishOffset), dz0 = z - (zsb + squishOffset)\r\n\t\t\tconst xins = xs - xsb, yins = ys - ysb, zins = zs - zsb\r\n\t\t\tconst inSum = xins + yins + zins\r\n\t\t\tvar c = lookup3D.get(\r\n\t\t\t\tyins - zins + 1\r\n\t\t\t\t\t| xins - yins + 1 << 1\r\n\t\t\t\t\t| xins - zins + 1 << 2\r\n\t\t\t\t\t| inSum << 3\r\n\t\t\t\t\t| inSum + zins << 5\r\n\t\t\t\t\t| inSum + yins << 7\r\n\t\t\t\t\t| inSum + xins << 9\r\n\t\t\t)\r\n\t\t\tvar i, value = 0\r\n\t\t\twhile (c !== undefined) {\r\n\t\t\t\tconst dx = dx0 + c.dx, dy = dy0 + c.dy, dz = dz0 + c.dz\r\n\t\t\t\tlet attn = 2 - dx * dx - dy * dy - dz * dz\r\n\t\t\t\tif (attn > 0) {\r\n\t\t\t\t\ti = pD[(p[xsb + c.xsb & 0xFF] + (ysb + c.ysb) & 0xFF) + (zsb + c.zsb) & 0xFF]\r\n\t\t\t\t\tattn *= attn\r\n\t\t\t\t\tvalue += attn * attn * (g[i++] * dx + g[i++] * dy + g[i] * dz)\r\n\t\t\t\t}\r\n\t\t\t\tc = c.next\r\n\t\t\t}\r\n\t\t\treturn value * NORM_3D + 0.5\r\n\t\t}\r\n\t}\r\n\r\n\tlet noise\r\n\tconst smooth = 0.015\r\n\tconst caveSize = 0.0055\r\n\tfunction isCave(x, y, z) {\r\n\t\t// Generate a 3D rigid multifractal noise shell.\r\n\t\t// Then generate another one with different coordinates.\r\n\t\t// Overlay them on top of each other, and the overlapping parts should form a cave-like structure.\r\n\t\t// This is extremely slow, and requires generating 2 noise values for every single block in the world.\r\n\t\t// TODO: replace with a crawler system of some sort, that will never rely on a head position in un-generated chunks.\r\n\r\n\t\tlet cave1 = abs(0.5 - noise(x * smooth, y * smooth, z * smooth)) < caveSize\r\n\t\tlet cave2 = abs(0.5 - noise(y * smooth, z * smooth, x * smooth)) < caveSize\r\n\t\treturn cave1 && cave2\r\n\t}\r\n\r\n\tconst subChunk = new Int8Array(16 * 16 * 16)\r\n\tself.onmessage = function(e) {\r\n\r\n\t\tif (e.data && e.data.seed) {\r\n\t\t\tnoise = openSimplexNoise(e.data.seed)\r\n\t\t\tself.postMessage(e.data)\r\n\t\t}\r\n\t\tif (e.data && e.data.caves) {\r\n\t\t\tconst { x, y, z } = e.data\r\n\t\t\tfor (let X = 0; X < 16; X++) {\r\n\t\t\t\tfor (let Y = 0; Y < 16; Y++) {\r\n\t\t\t\t\tfor (let Z = 0; Z < 16; Z++) {\r\n\t\t\t\t\t\tsubChunk[X * 256 + Y * 16 + Z] = isCave(X + x, Y + y, Z + z) | 0\r\n\t\t\t\t\t}\r\n\t\t\t\t}\r\n\t\t\t}\r\n\r\n\t\t\tself.postMessage({\r\n\t\t\t\tjobId: e.data.jobId,\r\n\t\t\t\tcaves: subChunk,\r\n\t\t\t})\r\n\t\t}\r\n\t}\r\n}\r\n\r\nWorker()");
 
 /***/ }),
 /* 8 */
@@ -5944,7 +5956,41 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "timeString", function() { return timeString; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "roundBits", function() { return roundBits; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "compareArr", function() { return compareArr; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "i1D", function() { return i1D; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "i2D", function() { return i2D; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "i3D", function() { return i3D; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "nearestBiome", function() { return nearestBiome; });
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "sortBiomes", function() { return sortBiomes; });
+/* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
+/* harmony import */ var _biomes_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(16);
+
+
 const { floor } = Math;
+
+function sortBiomes(temperature, moisture) {
+	return _biomes_js__WEBPACK_IMPORTED_MODULE_1__["biomes"].filter(arrayItem => arrayItem.temperature != "hardcoded" || arrayItem.temperature != "hardcoded").sort((a, b) => {
+		return Math.sqrt(Math.pow(a.temperature - temperature, 2) + Math.pow(a.moisture - moisture, 2)) - Math.sqrt(Math.pow(b.temperature - temperature, 2) + Math.pow(b.moisture - moisture, 2));
+	});
+}
+
+function nearestBiome(temperature, moisture) {
+	return sortBiomes(temperature, moisture)[0];
+}
+
+function i1D(a, b, x) {
+	let output = (a - b) * (1 - x) + b;
+	return output;
+}
+
+function i2D(a, b, c, d, x, y) {
+	let output = i1D(i1D(a, b, x), i1D(c, d, x), y);
+	return output;
+}
+
+function i3D(a, b, c, d, e, f, g, h, x, y, z) {
+	let output = i1D(i2D(a, b, c, d, x, y), i2D(e, f, g, h, x, y), z);
+	return output;
+}
 
 function timeString(millis) {
 	if (millis > 300000000000 || !millis) {
@@ -6034,33 +6080,34 @@ const texturesFunc = function (setPixel, getPixels) {
 		grassTop: n => {
 			for (let x = 0; x < 16; ++x) {
 				for (let y = 0; y < 16; ++y) {
-					const d = Math.random() * 0.25 + 0.65;
+					const d = Math.random() * 0.25 + 0.65
 
-					const r = 0x54 * d;
-					const g = 0xa0 * d;
-					const b = 0x48 * d;
+					const r = 0x54 * d
+					const g = 0xa0 * d
+					const b = 0x48 * d
 
-					setPixel(n, x, y, r, g, b);
+					setPixel(n, x, y, r, g, b)
 				}
 			}
 		},
-		grassSide: n => {
-			const pix = getPixels("0g0g70ordrzz0u30g730wa4vzz0xnyl8f11lrk7315qj7jz1fh47pb6553365533033636350335403653650063306333633300635163503655353653535605335031350330553500033033366333433663663535336655335055335553353530355333033503300333336635353663650660554353355635155305303053556333333366353323553060365553063030663533555365534355335530");
+		grassSide: function(n) {
+			const pix = getPixels(this.dirt)
 
+			// Fill in the dirt texture first
 			for (let i = 0; i < pix.length; i += 4) {
-				setPixel(n, i >> 2 & 15, i >> 6, pix[i], pix[i + 1], pix[i + 2], pix[i + 3]);
+				setPixel(n, i >> 2 & 15, i >> 6, pix[i], pix[i + 1], pix[i + 2], pix[i + 3])
 			}
 
-			const { random } = Math;
+			const { random } = Math
 
 			for (let x = 0; x < 16; ++x) {
-				const m = random() * 4 + 1;
+				const m = random() * 4 + 1
 				for (let y = 0; y < m; ++y) {
-					const d = random() * 0.25 + 0.65;
-					const r = 0x54 * d;
-					const g = 0xa0 * d;
-					const b = 0x48 * d;
-					setPixel(n, x, y, r, g, b);
+					const d = random() * 0.25 + 0.65
+					const r = 0x54 * d
+					const g = 0xa0 * d
+					const b = 0x48 * d
+					setPixel(n, x, y, r, g, b)
 				}
 			}
 		},
@@ -6069,162 +6116,120 @@ const texturesFunc = function (setPixel, getPixels) {
 
 			for (let x = 0; x < 16; ++x) {
 				for (let y = 0; y < 16; ++y) {
-					const r = 0;
-					const g = floor(random() * 30 + 100);
-					const b = floor(random() * 30);
-					const a = random() < 0.35
-						? 0x0
-						: 0xff;
+					const r = 0
+					const g = floor(random() * 30 + 100)
+					const b = floor(random() * 30)
+					const a = random() < 0.35 ? 0x0 : 0xff
 
-					setPixel(n, x, y, r, g, b, a);
+					setPixel(n, x, y, r, g, b, a)
 				}
 			}
 		},
-		oakPlanks: n => {
-			for (let y = 0; y < 16; ++y) {
-
-				const a = (y & 3) === 3
-					? 0.7
-					: 1.0;
-
-				for (let x = 0; x < 16; ++x) {
-					// these conditions are weird; can some comments be added here?
-					const mid = x === 8 && (y & 7) > 3 && a === 1
-						? 0.85
-						: 1;
-
-					const rit = x === 15 && (y & 7) < 3 && a === 1
-						? 0.85
-						: 1;
-
-					const r = (Math.random() * 0.1 + 0.9) * a * mid * rit;
-
-					setPixel(n, x, y, 190 * r, 154 * r, 96 * r);
-				}
-			}
-		},
-		water: n => {
-			for (let x = 0; x < 16; ++x) {
-				for (let y = 0; y < 16; ++y) {
-					let brightness = Math.random() * 100 | 0
-					setPixel(n, x, y, brightness, brightness, 255, 100)
-				}
-			}
-		},
-		hitbox: n => {
-			for (let x = 0; x < 16; ++x) {
-				for (let y = 0; y < 16; ++y) {
-					setPixel(n, x, y, 0, 0, 0, 0xff)
-				}
-			}
-		},
-		nothing: n => {
-			for (let x = 0; x < 16; ++x) {
-				for (let y = 0; y < 16; ++y) {
-					setPixel(n, x, y, 0, 0, 0, 0)
-				}
-			}
-		},
-		dirt: "0g0g70ordrzz0u30g730wa4vzz0xnyl8f11lrk7315qj7jz1fh47pb6553365533033636350335403653650063306333633300635163503655353653535605335031350330553500033033366333433663663535336655335055335553353530355333033503300333336635353663650660554353355635155305303053556333333366353323553060365553063030663533555365534355335530",
-		stone: "0g0g40sywflr0wb8hdr0zdjj0f13tzldr3333211210112222221212222220012121001110111222222233232233222111122111212333312223222222211010131223331331112222110010112211122233323223332222212232223332233332021211001212211122222332222233232111232112200101332112211122111321122222222233332222221123322122",
-		logSide: "0g0g60fl1ssf0l5j1fj0qftm2n0wa7mdb14cs7wf16az8xr3143304330341432315230523034133230223052313113324032313232301342413230325232314343134131524131432313422343433143230343243342324331053324324242433315332332414303333432303231430331343230533053135133424052303323531343314231333343143340313114334314134131331432",
-		logTop: "0g0g90l5j1fj0qftm2n0wa7mdb0z2esxr15quebj189da7z1cpma671f7ppfj1hzyayn1012101120110111077776768667777017334454555544811738877776777471164766666666756107576445544674601646636666466471165764655656756116576465464674610657646666566460164764434556756116576666666674610757767777787460175454444444447117776676686677711011101120110211",
-		bedrock: "0g0g509gy58f0e7f7r30o8fd330rkrev31627mkf3111124324211212133434341443012110110111412224232433202422111112014111121134433112221221102211014432344323443410222122211011213234421122344344442110121213211143334134410144431102221123442334402111321134111112343420211101234433211211234421121011044312301123",
-		glass: "0g0g50ybfh8f0znkiyo12rzshr1au95hb1lytipr4444444444444443411111111111111341114111111111104114111111111110413111111111111041111111111111124111111111111110411111111111111241111111111111124111111111111112411111111111111241111111111111123111111111111412411111111111411231111111111111133323222222222233",
-		cobblestone: "0g0g60muaccf0r0pekf0un11q711vr5rz1a8mosf1ef1r0f2144011454313543145330554330132314342143342101321132113232134310021354131154443152453321033543234313433211243215332233213541231321542213533311021543232233121341323231101221044532211235411035532354215434213323154331432332113244323212332143111311232121135432",
-		mossyCobble: "0g0gb0muaccf0mupnnj0p38xdr0r0pekf0rbmj9b0un11q70w1wkxr0y07svz11vr5rz1a8mosf1ef1r0f4199211276438a9619a8812764813858398951644251118533852182851464110531183233866642a176895308948428981498852118851988111851664158385117641484642305126244558824124185442111155214698112124761318998127651764653885847488164588511858685851588531841183352111338a984",
-		stoneBricks: "0g0g70p2gyyn0rkrev30tj2nlr0xf9ou70zdjj0f12psrnj17g8flr5666666666665550645455555444445065454444445534406434554345434330632334544334324053244333345324302222222222222220110011000111111166666650566666663555544065455554544544306435354445544320634344454444343053345433332322305443344322222220222222221111110000111111",
-		mossyStoneBricks: "0g0gc0mupnnj0p2gyyn0p38xdr0rbmj9b0rkrev30tj2nlr0w1wkxr0xf9ou70y07svz0zdjj0f12psrnj17g8flrab3668863b88a680b9a28683a9999332ba926363996a2931b9792a679a979721b737793993697591a72397773632297075225752332277924410441110000444886bbba1abbbb6883aaaa991ba9aaaa6a99a9971b97a7a399aa99351b797992a99997371a689a97777573371a897799755223791722757754000041110004400",
-		bricks: "0g0g90vz62nz0yhavi712oqn7j13rinsv173m8lb193f4zj1b1w1rz1d7u7sv1j1u51b7742888777458777443513444435144410060033100503112256522225565222887747458777474214444315133333151341110600133105522225565522225677458887474588774435344444153444110511331106133325565222225652224777474287774745144444353444441501111106011111065222225655222566",
-		coalOre: "0g0g70ehg7wf0hjr9j30j7xaf30sywflr0wb8hdr0zdjj0f13tzldr6556544543445666554536666553335454331453344511556665655105655644455443346545645556553215542143464552111065105555433556663334466661156543215455645565354100056665354514334663354455555666634106655443366412111054665105556005455554456665566544455555554655555566",
-		ironOre: "0g0g80sywflr0wb8hdr0zdjj0f13tzldr1cpl2bj1gbvabj1o4exa71qwyvb33223211210112333221203333220002121005120011265223332322642322311122110013212312223220762217510131227655432542222100223330001133336523210762122312232021644423332021251001330021122222333301643322110033167666421332542223442122221123332233211122222221322222233",
-		goldOre: "0g0g80sywflr0wb8hdr0zdjj0f13tzldr1x01czj1y6gem71z13ncv1z141z33223211210112333221203333220002121005120011265223332322642322311122110013212312223220762217610131227655432542222100223330001133336523210762122312232021644423332021251001330021122222333301643322110033167655421332642223442122221123332233211122222221322222233",
-		diamondOre: "0g0g80h634zj0sagdtr0sywflr0wb8hdr0zdjj0f13tzldr1845xbz1ndl24f5445433432334555443425555442224343221342233461445554544604544533344332235434534445442764437632353447611054104444322445552223355556145432764344534454243600045554243413223552243344444555523605544332255367611043554604445004344443345554455433344444443544444455",
-		redstoneOre: "0g0g90sywflr0wb8hdr0zdjj0f13oi67z13tzldr15wexa71b68mbj1f24cfz1yr4gsf4224211210112444221204444220002121005120011285224442422832422411122110014212412224220862218610141227655342532222100224440001144448524210862122412242021633324442021251001440021122222444401834422110044168655321442832224332122221124442244211122222221422222244",
-		lapisOre: "0g0ga04hvenz04hvl6n04ihywv066fd3306r2ozj08z4sfz0sywflr0wb8hdr0zdjj0f13tzldr9889877876778999886669999886668787454386777813889889926329989977788776679867978889866428862576797861242398238888723679978767799993189872643386678998687222236258686627661237725788300799668893588779906612366339998700381039799887783339899877788888899888888899",
-		emeraldOre: "0g0g7004swsf06mdmv30sywflr0wb8hdr0zdjj0f13tzldr1ohjdhb5445432232334555443445615442334343223310333422445555225555546133344361324555104445441061243255353445551054434444332232552323355555545461442244534444441053615224243433223310361344444556155551044223455103322553261334455444344441045554455433344554443544444455",
-		coalBlock: "0g0g501e50xr03md24f05ul3b308mtq0v0bf3ri73322122002210012222121000210123321000122000022221001243222202210001233222100210020222221000001220132211001122222022210122343221002110123322210000012123221103200212122210002211232102112210012230002113432123322000123420023221000123210012221001222212212221000",
-		ironBlock: "0g0gb1dawbnj1fj5rlr1hrdssf1m7r1mn1nlyvwf1pa4wsf1qe8xdr1s2ey9r1t6iyv31tqkz5r1ver01r32233333333222232aaaaa9998777772277777777777777105555555666444402aaaaaa999777771277777777777777105555566664444402aa9999977777771277777777777777105555555566644402aaaaaa999977771277777777777777105555556666444402aaaa9999777777127777777777777712222222112111111",
-		goldBlock: "0g0g91kr8um71mphb0f1w77ain1xakkqn1ypvwu71yr43jz1yzk7pb1z0cef31z10mwv2222332223333221285577888776688125664877623324812564877462224471374777462264467137777462267762302877444667762330287444664462232037444664466222613744664466662461364667766666742032667762262776203267762332446261334462332666224132322332662264701101100011001100",
-		diamondBlock: "0g0g90434min061d2in0h634zj0l2fpxb0sagdtr0vckf0f1845xbz1ndl24f1z141z33333223332222331378866777664477138445766432235713845766543335561265666543345546126666543346643203766555446643220376555445543323026555445544333412655445544443541245446644444653023446643343664302346643223554341225543223444335123233223443345601101100011001100",
-		redstoneBlock: "0g0g50vx660v153407319j36671gh49a71runlz34444444444444444433433222334333443342202222232344332311001120234443211012011244443210000000042344302100000011134421100000000122442231000000111344324110210111234432110004001224443321101001110344322211111122224443124211022323443334433223333344444444444444444",
-		lapisBlock: "0g0gd05lqqkf06zt0xr07js8hr07tw35r084kzr308e6ein08e99fj08yjpq708ys8ov0an2j270c0w4cf0dp94hr0fdf5kv98999989cb848484878b78736733677197b8867767623765967877377863366597687666378a63759a77776636a7736197a767676236763596763666a6233625c636636376632775c633687363332371963237873676327186672236338763619763722332677630877633332336667143766633633367708111111610220000",
-		emeraldBlock: "0g0g606lfrb306mdmv307ei5fj07xmdbz0iaro5b10c5ptr0000000000000002055555454551144305000000200002430404555411114243050500000002425305050555445212130405054411421203040405451142120305040411020202130404041122120213042105410112420301212222222242030405510000441213012222222222224301011001110014532333333333333332",
-		tntTop: "0g0g704qh5a70nyecxr13jyl8f14a4flr1d4tukf1otd8u71szz8jj5665566556655665622462246224622462136210012300234431403344004433566006655660566562246204121402246211120000231023443341000111403356651000000506656211020001140224621360200120112344331031140344335661560500611665621462146124612462236223622362234433443344334433",
-		tntSides: "0g0ga07ipw5b0fbhzwf14a4flr1d4tukf1gwtvcv1ldqupr1otd8u71pk09vj1szz8jj1z141z38863886388638863663266326632663266326632663266326632663266326632663266326632663295775577755777799711071550711059745055115157177795717717115505479750571550550759444444444444444433223322332233226632663266326632663266326632663266326632663266323332333233323332",
-		tntBottom: "0g0g413jyl8f14a4flr1d4tukf1otd8u72332233223322332300130013001300130013001300130011111111111111111233223322332233230013001300130013001300130013001111111111111111123322332233223323001300130013001300130013001300111111111111111112332233223322332300130013001300130013001300130011111111111111111",
-		acaciaLogSide: "0g0g60ma181r0oi99fj0pcavi70t8nim70y9464f139ktmn3143304330341432315230523034133230223052313113324032313232301342413230325232314343134131524131432313422343433143230343243342324331053324324242433315332332414303333432303231430331343230533053135133424052303323531343314231333343143340313114334314134131331432",
-		acaciaLogTop: "0g0gb0j7rlz30kvxmgv0ma2nen0o889hb0t8nim713rcxdr16jehof18hk3r31c3oo3j1fprugv1hy2osf432332211231433449999898a889999329556676777766a2395aa999989996910869888888889782197986677668968318688588886886932879868778789784487986876868968448798688887886833869866567789782287988888888968219799899999a96811976766666666691099988988a8899933412233444322114",
-		acaciaPlanks: "0g0g711t8qgv13rcxdr16jehof18hk3r31c3oo3j1fprugv1hy2osf5456666656666652554423455544553345554543333445522112210011010010563666636665443545543432344555543345444255544333001121000011121056654466656666535455554333434332654433334444335300122100012110006556655366646566445533433555544443345432554333330110012221010000",
-		birchLogSide: "0g0g80f1fcov0qqliwv1gxap6n1o60u7z1ptrf271uar6db1uum5mn1z141z36643366634663366346666777634443677744367666636777732100136777737366321101377631211336344363331001266344677766532343777777334556376336775577775777764455577766336336777766634477636777767777577634436633667553210026677763443100000133377761132116331677764336336",
-		birchLogTop: "0g0ga0mk6h3316m5am719xxgqn1cg9ce71f8hx4v1jowirj1nv4jcv1nvimm71tgjy7z1z141z39818811001809889966665657556666816223343444433718627766665666360153655555555645106465334433563580535525555355368154653544545645995465354353563599546535555455358853653323445645115465555555563510646656666676350064343333333336016665565575566688901188999811009",
-		birchPlanks: "0g0g717znmrj19xxgqn1cg9ce71f8hx4v1jowirj1nv4jcv1nvimm75456666656666652554423455544553345554543333445522112210011010010563666636665443545543432344555543345444255544333001121000011121056654466666666535455554333434332654433334444335300122100012110006356655366636566445533433554544443345432554333330110012221010000",
-		darkOakLogSide: "0g0g60besef30dcwlbz0e6y70f0hj7ev30klcs8v0oho0e73143304330341432315230523034133230223052313113324032313232301342413230325232314343134131524131432313422343433143230343243342324331053324324242433315332332414303333432303231430331343230533053135133424052303323531343314231333343143340313114334314134131331432",
-		darkOakLogTop: "0g0gb08ml79b0auqebj0dcmqdb0e6y70f0f117gf0g4r4730h8wirj0hj7ev30kb0idb0lz2akf0n393wf741441100140744779999898a889999419225565666655a1492aa999989995903859888888889681096985566558958408588288885885941869858668689687786985865858958778698588886885844859855256689681186988888888958109699899999a95800965655555555590399988988a8899944701144777411007",
-		darkOakPlanks: "0g0g70bejy0v0dcmqdb0g4r4730h8wirj0kb0idb0lz2akf0n393wf5456666656666652554423455544553345554543333445522112210011010010563666636665443545543432344555543345444255544333001121000011121056654466666666535455554333434332654433334444335300122100012110006356655366636566445533433554544443345432554333330110012221010000",
-		jungleLogSide: "0g0g90h96cxr0htdywv0m9k4xr0ne277j0orqc5b0rkbldr0sxvim70wunksf0ys83cv4688422222666444444114414441001111137510011441866644668842422224146644411143573444422235311010006646442222444886101000466412222444688411068844441122575311222100755444666664355741100112241201661144866643341111623533422111444644111004661664444664122244442222",
-		jungleLogTop: "0g0g90h96cxr0htdywv0rkbldr0ys83cv160fym7188mku71batekf1f77h1b1h5ei2n3212210011213223377776768667777217444454555544812748877776777470164766666666756107576445544674620646646666466472165764655656756336576465464674633657646666566462264764444556756106576666666674600757767777787460175454444444447117776676686677722310122333211013",
-		junglePlanks: "0g0g70sxkd1b0xdxkov160fym7188mku71batekf1f77h1b1h5ei2n5456666656666652554423455544553345554543333445522112210011010010563666636665443545543432344555543345444255544333001121000011121056654466666666535455554333434332654433334444335300122100012110006356655366636566445533433554544443345432554333330110012221010000",
-		spruceLogSide: "0g0g60csc9vj0cskpof0dmmb5r0geuxof0lf4i670nnb4sf3243304330342431325130513034233130113051323223314031323131302341423130315131324343234232514232431323411343433243130343143341314332053314314141433325331331424303333431303132430332343130533053235233414051303313532343324132333343243340323224334324234232332431",
-		spruceLogTop: "0g0g80ix87pb0nnb4sf0p1n6db0qzu7zz0v5xypr0xy569r106bshr11ueyv31012101120110111066665657556666016223343444433711627766665666361153655555555645106465334433563501535525555355361154653533545645115465353353563510546535555455350153653323445645115465555555563510646656666676350164343333333336116665565575566611011101120110211",
-		sprucePlanks: "0g0g80nnb4sf0p1n6db0qzu7zz0v5xypr0xe36rj0xy569r106bshr11ueyv36567777767777762665523566655663356665643333556622112210011010010673777737776553656653532355666653356555266655333001121000011121067765577777777636566665333535332765533335555336300122100012110007367766377737677556633533665655553356532665333330110012221010000",
-		sand: "0g0g61m6x62n1nb9nnj1opn5dr1r80f7j1scbi0v1u0izgf4223213232132313122121130142502432011422222121122331213133132122125213232322122321223332123122121421151211022121212212212111242112322310131232124212221120212231202321232232012311223212331112121213132145321123323230232323221223235332323203223232332321223232",
-		gravel: "0g0g80rufq4f0vqwlbz0zxiprz125i9rz15rvcan1627mkf1d0twqn1dackxr0341152512122521522122312102333522103133522351352232321522512322132741122210253202140133526552213104226515530122553253522311225353521223310256122311652152322132123553102521325022533562113225212132222537415525331025232422215235323311243310351274122232321212",
-		blackConcrete: "0g0g40149on3028826702882yn028dp8f1330112022012232303130022112212111032203010022012122012222321221011223213030101033110011212233120230013131003200032022012002002112233122202312230200102211312102222122132011021201223320211021220121122122321331201102120210001220112022023302312210123220102110",
-		blackWool: "0g0gf0149on3028826702882yn028dp8f03cc2rj03cc3jz03chptr04gg3cv04glqf305kk3y705kpr0f06oo4jj07ss54v08ww5q70a106bj46348b45ab13993299eebb7742570367bc77dc97bcbbdeb996bc768c47cc96ec9749bb115953bb31314c414641672547eebb8879bea7eeb966eebacc45bca9ccbb35ca4657528733577b117949ee7beeccbbecbacb799839349966bb445911796611cd318b9bee92badecb9717bc77cedc97c99beb559b6424c946cd76ac44bc",
-		blueConcrete: "0g0g30c98pof0c98qgv0c9ecqn1000001101000201011001000101120101211111010200000001000110100100220110011001121111001100100100010200102101101000000011110001101010101011020111110000000101121111101100100100010110111010210111001101000100000111110100101111000120000010100000110001200110010002",
-		blueWool: "0g0gj0c98pof0c98qgv0c9ecqn0c9edj30ddcr270ddidbz0ddie4f0ehgrnj0ehgsfz0ehmepr0ehmfi70flkt1b0flqfb30flqg3j0flw2db0flw35r0gpugov0gq02yn0gqbd3335237c44ac12992289iidc6632460256de67ge96cebbhic985ce657e46ee85ie9648cc114942cc21214e413541562436iidc7769dia6iic955iicaee34cea9eecb24ea4546427622466d116949ii7biieecciecaed699728249955cb344911695511eg217c9bii92bahiec9617be67eigf86e99cid449b5324e935eh65ae34de",
-		brownConcrete: "0g0g30pl5gqn0qp3u9r0qp9hbz0211211202222221222122211211122121011102222222212211200222112101121111211111222121222122122221201212121222112122222221220222222122221201121212022122122110221211122221211011221212121010121011111212122221121221222212122112112112211010222111121211220222221122",
-		brownWool: "0g0gi0qp3u9r0qp9hbz0rt7uv30rtdh4v0sxbunz0sxbvgf0u1a8zj0u1fv9b0v5e8sf0v5e9kv0v5jvun0w9i9dr0xdgmwv0xdm9z30yhkni70yhq9rz0zloo3j0zluadb35228d45bd12aa219bhhed7721570257ef77gfa7dfccghdb95df758f47ff95hfb749dd115a52dd21214f413541571526hhed887aehb7hhda55hhdbff25dfbbffdc25fb4557518722576e117b4bhh7chhffddhfdbfe7ab82924bb55dc245b116b5511fg218dachhb1cbghfda717cf77fhgg97fabdhe55ac5214fa25fg75bf24ef",
-		cyanConcrete: "0g0g305objsv05obklb05oh6v31112010122111202100121222111122012212211101111202102221210222122211111211221111011021102021212212220211021022022201210110010212210211110202101010201110112020221222112102111202212110222110211221001010211001221212202222122111221102211100222112011211120220211",
-		cyanWool: "0g0ge05obklb05oh6v305omt4v05omtxb05osg7305oy2gv05p3pj305p9bsv05p9clb05peyv305pkl4v05pklxb05pq87305pq8zj242269347912662167dda95521450145ab55cb659b88cd97649b546b35bb64db7536991146419921113b312431451424dda96656ad75dd9644dd97bb249b77bb9814b73445416521454a115737dd58ddbb99db97ba56762623774498234711474411bc116968dd7187cdb965158b55bdcc65b679da44684213b624bc547b23ab",
-		grayConcrete: "0g0g20ehlvr30flk9a70000000000000000000000000000000000000000000000000000000000000000000000000000100100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000100000000000000000001000000010000",
-		grayWool: "0g0gd0ehlvr30flk9a70flpvjz0flpwcf0flvim70gptwxr0gpzjzz0htxxj30hu3jsv0hu3klb0iy1y4f0iy7ke70iy7l6n333359337803663157cca85531350135ab55cb658b88cc87539b545b35bb53ca7535990036329930103b303330350335cc995556ac75cc8633cc87ba339b77ba8813a73435305532355a005737cc58ccab88cb87ba56753533773498333700574300ac205968cc7087cca865058b55bccc55b679ca33684313a634bc537a33ab",
-		greenConcrete: "0g0g20k2mku70k2s73z0001000100111100101010100101101101101100111010010111001001011000100001100011000100101010110101111010000001011001001000100001010110101110010011010000101011110000010110101000000001010000110101011101000111110011101010011000111100001100011000000111101001101100",
-		greenWool: "0g0gh0k2mku70k2s6bj0k2s73z0l6qjun0l6w64f0l71rlr0mb054v0mb5qm70mb5ren0nf9qf30nffcov0ojdq7z0ojjbpb0ojoxz30pnnbi70pnsxrz0rw0y6746447c45ab1499419aggcb8841580168ce88ee98bebbfgba96ce867e48ee96gda849cc125953cc41114e424642681546ggcc7789cga8ggb966ggbaed45ceaaedbb15da4658517843586c21894agg8bggdebbgebaec89a749449966cb445a116a6621de327c9bgga1bafgdb9828be88egee98e9acgc559b6414d946ef86ad44ce",
-		lightBlueConcrete: "0g0g3090ti4f090z4e70a4xipr2120111111121222222121122112211121121211112221221111102221122212112021111111122111112111112121211222221111122121212121112021122112211121211211111121220111212121111121222001122211222221022122111011221111111021211221211211121112212111111122121111211112222111",
-		lightBlueWool: "0g0gq090z4e70a4xipr0a534zj0a58r9b0b974sf0b9crun0b9ie4f0cdgrnj0cdmepr0cds0zj0dhqein0dhw0sf0dhw1kv0em01dr0em5nnj0fq9o8v0fqfain0gudou70gujb3z0hyhon30hynawv0hynbpb0j2lp8f0j2rbi70k6pptr0latpmn7b57fm89ik26ff63fippnkdd739d04benodepogdkojjppkifblodcfo8doofbpoie8fml21af95mm62428o817b81bd397cppmlffefnpidppkgbbppkioo79loiiookj4aoi8cad93fd55adcn22dh8ippejppookkpokiondfif6f68hhbcmj78ai22cicb22op51fmfjppi3jippokfd2ejoeeoppofdofilpn9agjc738og7copebio78no",
-		lightGrayConcrete: "0g0g20yjgg730yjggzj1000110001001010100010000000011101100010001001011010001100101010001000000000000010100000000100010100000000001010100010001000000000100000110000100001100000011101110001001011001001001001011000000000011001001001001010000000010000000010100110000000001000001001",
-		lightGrayWool: "0g0gi0yjgg730yjggzj0znkgsf0znkhkv10rohdr10roi6711vshz311vsirj11vy5tr12zwjcv12zwk5b1440jy7144670f1584kjj1584lbz16c8l4v16c8lxb17gclq745339e55bd1399329bhhfd7732570257ff78hfa7dfcchhdb95df769f57ff95hfb759ed115953ee31215f514551572537hhed9979fhb7hhda55hhdbff35dfbbgfdc25fb5657529733577f117b5bhh8chhfgddhfdbgf79b93935bb56ec355b117b6511fh319e9chhb2cbhhfd9718cf78fhhg97f9bdhf55ac6325fa36fh75bf35ff",
-		limeConcrete: "0g0g30ppd5a70ppirjz0qth5331121111111100111111111110111110111010211100110111211111211101111112111111111111101110111011110211011011110111110102111110100111000110112112110211112112112111212111111111111111011111011100101111111111212111111111112010011011221111111110111120011110111101111",
-		limeWool: "0g0gg0ppirjz0qth5330qtmrcv0rxl4vz0rxqr5r0t1p4ov0t1uqyn0u5t4hr0u5yqrj0v9x4an0va2qkf0we143j0xi53wf0ym3hfj0ym94hr10uh5of35237c44bb1299228affcb6632460257cd67ed96bdbbefba85bd657d46dd85fca748cb104942cc21214d403540562435ffcb7779cfb6ffb955ffbbdc34bdbaecbb24cb4546427622465c01694aff7bffcebbfdbbec69a728249955cb344a105a5501ce207c9bffa2bbefcb9607bd77dfee86d9abfc449b5324c935de75bc34cd",
-		magentaConcrete: "0g0g419jw2rj1anugan1ao02kf1ao03cv2233313332221332333333233213322333223332331233333313323103121223222131233211303233130230322231223302323103002220333103232232223333313231221331233333231232212303302330122232333333332123320111033031332321233232303322232223332223231233212323332233222231230323",
-		magentaWool: "0g0gs1ao02kf1ao03cv1brygvz1bs435r1bs43y71cw2hhb1cw83r31cw84jj1e06i2n1e0c4cf1e0c54v1f4ainz1f4g4xr1f4g5q71g8ej9b1g8k5j31g8k6bj1hcijun1hco64f1hco6wv1igmkfz1igs6pr1igs7i71jkw7b31jkw83j1kp08ov1lt49a71mxdwxr6945dl77ij14ff43ehrrmjba537a039cmoacqogajojjqrjhe9koa9do7booe9rnhc7elk118f74ll41317o7169719a275arrmkddcfmribrrjg99rrjion57koihonjj38ni798a72db448bam11bh7hrrcjrrnojjrojiomafhd4e47hh99lj578h11ah9911nq41dlfjrrh2jiqrnjfa1cjoccorqpebofhkrm78gj9537ng59oqc9in57mo",
-		orangeConcrete: "0g0g21p59iwv1q97wfz1011110111101111111011111110000111101110100111111110011111011001001101110110111111111110111111011111101110111111110111111111111111011110111101111011101101101111010010111111110110101110010011101111111010101001101111111011111110111111111001111111101111111111",
-		orangeWool: "0g0gm1q97wfz1rdbw8v1rdbx1b1rdhjb31shfwu71shfxmn1tljxfj1tljy7z1tlpkhr1upnytb1uptl331uptlvj1vtrzen1vtxlof1vtxmgv1wy1m9r1wy1n271wy79bz1wycwe71wyijgf1wyo5q71wytssf46239f55de02aa219dllhe8731570268hi79kib7eieelled96fi779i58ii96lhd859ff005a52ff20205i504650671537llgf998ahld8lleb66lledih35fiddihee25hd5757519822587h008c5dll9ellhieeliedih7ad92925cc67fe355d007d7600hk209faelld1edllhea709ei89ilkj98iadflh55be7315hb37il86dh35hi",
-		pinkConcrete: "0g0g31ltks8v1mxj5rz1mxj6kf1122212121112211111211211211122112111221111111121211212111122211111112112121112111111111111112111212221121111111212211112101110212211211122111211112212111211110211211211211111111121212221211121111112212211121211111211212211111111111121112111211212122122111",
-		pinkWool: "0g0gv1mxj6kf1o1hk3j1o1n6db1p5r6yn1q9v6rj1q9v7jz1rdz7cv1re4uf31si37y71si8u7z1tm78jj1tmcutb1tmcvlr1uqgven1uqmigv1uqs4qn1vuqj271vuw5bz1vuw64f1vv1se71vv7fgf1vvd1q71vvd2in1vviosf1vvipkv1vvobun1vvocn31vvtywv1vvzlz31vw588v1vw591b6a46em78jk25gg53fjuuokdc638c03adoqcesqhckqkktukjfalqcbeq7dqqfaupjd7fml219g83mm52327q716a71ac386buunleedgoujduukhaauukjqp68lqjjrpkk39pj7b9c83ed439dbo12di7juuekuuprkkuqkjrocgje5f57iiabmk679j22bjba12ps31emgkuuj3kjtupkgc1ekqdequssfdqgjluo89hkb637ph6bqtdajp67oq",
-		purpleConcrete: "0g0g40qo16v30rrzke70rrzl6n0rs57gf3222322033323333333312320220233231302222232332333202332233033330333322320012333323333330233022223332223332223232323303323233332332021220323110033223333322032332312323332322322202232223033232221223233023333332022233332332233232023333233223032323332323323332",
-		purpleWool: "0g0gm0rrzl6n0rs57gf0sw3kzj0sw3lrz0u01zb30u07lkv0u07mdb0v45zwf0w84dfj0w84e7z0xc8e0v0xc8etb0yg6scf0ygcem70zkasxr10o96gv10o979b10oetj311sd72711sd7un12wh8fz154uxhb47349e45ce13aa32acllfe8742570279fh79jhb7ehddkleca7eh779h48hha7lgc94aee116a52ee31214h414741771547llfe999aflc8lleb77llechg45ehcchged26gc4767519832687f118c4cll9dllgheelhechf7ac93a34cc77ed446c117c7711gj219eadllc1dcklgea719dh99hljia8hacelf56bd7424gb47hk97cg44fh",
-		redConcrete: "0g0g112voa9r0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
-		redWool: "0g0gd12voa9r13zmnsv153l1bz167jev3167p14v17bnenz18fls7319jprzz1ano5j31ano6bj1brmjun1brs64f1f3yku7241258227712662157cc9754212401459b45bb647b77bc77548b445b25bb54ca7525881036218821112b202420441224cc8855569c75cc7644cc77ba228b77ba7713a724342155113549015627cc57ccab77cb77b946752522664487223711474401ab105867cc7177bca764057b55bcbb55b678c923674212a624bb547a229b",
-		whiteConcrete: "0g0g31ktui9r1ku04jj1lxyi2n1121212211221121111221111121122111211111121112111212112211111211212222111111221112211112101110211111122211211211111111212221111112212121212222111121122211111111222111111112121222121111111111211121221112221111121222121112212122111221211212111121221211221212",
-		whiteWool: "0g0gn1lxyi2n1lxyiv31ly454v1n22inz1n22jgf1n285q71o66j9b1o66k1r1o6c6bj1paajun1qeekfz1ricyrj1riil1b1smgykf1smmlmn1tqkz5r1tqqm7z1uuozr31uuumtb1vyt0cf1vyynen1x2x0xr1y711j37a56dj89hi26ee63egmmliba639a04acllacmlfailiimmigeajlaadl8blleamlgc8ejj219e94jj62429l817a81aa396ammkjddcelmhbmmifaammihll69jlhgllii49lh8a9a93db549bal12bg8gmmcimmlliimlihllaegd6e68ggaaji689g22agaa12lm41djeimmg3ihmmliea1cilcclmmmeblegjml99fia638lf6almcahl68ll",
-		yellowConcrete: "0g0g41to1w5b1us09of1us5vy71us5wqn2111111122222221232021021213122222211020112110121211022201012212122222312211221122213110202011133121132211112221221211211111112120231210211111201132001211212111211102220222021102211223011100222121202222222132111211111112111112021121120222221222011012122121",
-		yellowWool: "0g0gj1us5vy71usbj0f1vw9wjj1vwfitb1vwfjlr1vwl5vj1vwl6nz1vwqsxr1x0p6gv1x0utj31x10fsv1x10glb1x163nj1y54h6n1y5a48v1y5a51b1y5frb31y5fs3j1y5lf5r45239e44bc0299219biiec7731470158eg78hga7cgcchicb95dg759g47gg95ifb849ed005942ee20104g404540571436iied9989eib7iica55iicbgf34dgbbgfcc15fb4557419722576e007b4bii8ciifgccigcbge79b92924bb55ec345b006b5500fh209e9ciib1cbhifc9708cg88gihh97g9bdie45ac5314fa35gh85bf34eg",
-		bookshelf: "0g0gt03fxnnj04laqdb0a0ot1b0b6j6db0c8r6db0deww730df88ov0egz6rj0gpo9330ht5kov0k20av30nf40zj0pnc1dr0qoh8fz0sy416n0w8kcn30wc5n9b0yicu0v11vb08v11vskcf13z03jz16atkvz17fehvj1as1ce71czhmv31e50qv31g6nvgf1gbtpfj1ks44qnommllhlllmmmmlmoo44477444772534oo799kk999ni9637olkffqk99gpjk631lsqffqk64gnik631soqfdqf6gcngf651ookd9kf3c7igf350mlorrsssroorrroolollmmhmllmmmllhoo77227cb7427724ooqk763gck99cb97olpj063gckq4gc10hsqk063a8fqkgcpjsoqf065a87kqgc10omkfe35ccefkcb03oorrsssroorrrrooo",
-		netherBricks: "0g0g706o77cv08w9lhb0b4bzlr0dcedq70fkb4sf0gof6670iwn6kf0000000000000000556515666555165532340433333405333432133223321333000111000001110015666544155545540543333306433333143333221433243211000001110000014416641644164414330433063304330423143314321333140111011101110111464414666644166433330433344303333322033333330333",
-		redNetherBricks: "0g0g70c7i51b0efew3j0fjiwov0ive1a70nbiubj0svgd1b0v3ir5r0000000000000000556515666555165532340433333405333432133223321333000111000001110015666544155545540543333306433333143333221433243211000001110000014416641644164414330433063304330423143314321333140111011101110111464414666644166433330433344303333322033333330333",
-		netherQuartzOre: "0g0gc0hs27zz0m7vq4f0m81d6n0ncb0u70rsft330u2845b0v4m7sv10p0npb1bug2671e4e1vj1n1fv9b1smb9xb1312426644044643344320246610442164643068a921424676466baa866314246766ba8674662643166895678a8544641466565ba95146866310289856642b9742469b814466ab862467ba624646b952364a950268665602426852108b61623214642649a9164941364667689238976124667423804646442246624630246644",
-		netherrack: "0g0g70hs27zz0m7vq4f0m81d6n0ncb0u70rsft330v4m7sv10p0npb1312425544044543344320245210442154543012432142456545423545531424565424566455254315431566554244541452054554214565531024541154246642454221445541452456540245455112354554025655200242254210254102321454254122154541354556512234565124556423204545442245524530245544",
-		netherWartBlock: "0g0g60of09vj0suze9r0xana4f1539r7j1brbain1g7rcvz0122001222532010222235202110022112111222202202320122201003202242042220021211122103224300222201201022220122252002210210211223102220000221222200222022221132210202012201104100222102201012211021042230122022012022212012022002220222202202220234022205220322022302",
-		quartzBlockBottom: "0g0g31sm5mv31tq9ngf1tqfbb32222221111000222121111000002222111100000012222110000001122221110001111000110000011100000110000011111222200001111222222211111111222211000112222220110012222222211222222222210000022222211000000222222110110112222111100112222221100101122222111101222222222210000",
-		quartzBlockSide: "0g0g61p9z6kf1qe37y71sm5mv31tq9ngf1tqfbb31uujcov5555555555555555543333222224444153322222234444304222223344433330423333222332222153322222332222215333444422223330544444433333333054433222334444405332234444444430544444444432222154444433222222405444332332334440533322334444443042323344444333311100011111110000",
-		quartzBlockTop: "0g0g61p9z6kf1qe37y71sm5mv31tq9ngf1tqfbb31uujcov5555555555555555543333222224444153322222234444304222223344433330423333222332222153322222332222215333444422223330544444433333333054433222334444405332234444444430544444444432222154444433222222405444332332334440533322334444443042323344444333311100011111110000",
-		quartzPillar: "0g0g41qe37y71sm5mv31tqfbb31uujcov0202031312130212020302130313031202131313120313020313130213031313131303120302121313020312031203131302131313020303120313031303130312130303131303120213131302131212131312130202120313021213120302031302120313031303130202130303131303120313031213120212131302121202",
-		quartzPillarTop: "0g0g51p9z6kf1qe37y71sm5mv31tqfbb31uujcov1021223242413020222122211221122002223434434322223123443344443211113412222221431242442344443244222243242222424423423324244142441222442424324234143244242211423322224423334432442421341222222143111123444444443213222234444443222002211222122112221203142423220200",
-		chiseledQuartzBlock: "0g0g61p9z6kf1qe37y71sm5mv31tq9ngf1tqfbb31uujcov0444404333022440043331222204444003322111000444300222223004443331023011101110022103315544432202200110441100220000554444144033344544433204314444440111230011441101054044444432154104400110111004401444454005544440133321100004443002323155440333300444414444132220",
-		chiseledQuartzBlockTop: "0g0g51p9z6kf1qe37y71tq9ngf1tqfbb31uujcov0334314232133420021100022000112002044203204421200204120420412021020113032020003102233304212233200000000421110000323433442223344422222222222222220000001321000001044343142143222104011204214110201302130420313020120234032023403002111003201100400222314222133420",
-		chiseledStoneBricks: "0g0g70oigd8f0qqoef30sz21vj0xf6vpb0yjgikf11vskcf17g711b6666655666566562644424444224444054110000111123205206665566561530640654434442154064064322334315405205430005421630540632000643062052054300053206306215435655420630641644545432053064163232322215406421110000011530556655666655543053343234433232202000000000000000",
-		smoothStone: "0g0g70wb8hdr0yjgikf12zwkxr17gcnb318kgnwf1asop331d0wq9r1011002200220121054556666553445204334454444555501666455566655442255444545666645006555555554343412556664665545550243343443434466116656545555455620555554566656661054544334454454215555666665566622444566454433452165445556555455104456665566544401022112221000121",
-		soulSand: "0g0g60egz94v0ht5n270k181z30oho3jz0sxyiv30xeekfz3130033202100434433135531100234004241451321012411423432542212230032442154212211332234104322433212002314322315332220023322345513032322211233445304302332013540423202342330242132302341043213032020354044321232020431445421112202350345131123302354202432103212415",
-		glowstone: "0g0g80u1fugv0v5phbz10pn01r11uj6db1kqv1tr1x1ncov1y6jzlr1y711j35420045440276423654011240346654024032201131054033034542017510033014766405664136502566552454236751004554020132450531024010352320465230213276501576442654346640335420454220452013000320356304012311354016754036520357660354215764034654201003242013154216521100013",
-		andesite: "0g0g60sywflr0wb8hdr0yjgikf11vsl4v17gcnb31asolxb2114332104423221245323445330122411334410122443224410133445433231235442223333211433323243210013432324542104543333423310154332333433114143343224533143342221154333332321101544332201331254422332333443443233212331543333334533112233301244323223541321322323234432",
-		diorite: "0g0g60xfchz311vskcf19of1fj1gd8su71ktouf31smgykf1222352233524355201322135345543151355101325543235255312553213225351243153532255245355541332335235332455214554102243123234555521232203255443244250155213551234541244310134335513055510144221512352542543554223223212343125454353242115521455321245235554124421255",
-		granite: "0g0ga0l56fi70plgu0v0yhw0sf1424tmn17eb8cf1aqna4f1e3al8f1e3x7un1jnje2n1qczoxr7434244344046445431548244224422341444335249241464143446145532344234232113754334244255342143347242445524442555322424474302155243346344255522344245535242552464245557314243844212555415442024425030323244424324439435524312355344448553215435547245544733324244425",
-		polishedAndesite: "0g0g90oilzi70sz23gf0v7a3270yjgjcv10ru60v11vyakf11w3ugv19okmwv1e4v30f7878888888788785843334442443134084444443376644307416763343446440844442456433334083344333424433318444634666554320833433332123444184562444466776608434433443344540844667633366444081444444664466208466654333134760844433334465334083333664444334406100000000110000",
-		polishedDiorite: "0g0g80qqu0ov0xfi5tr11vy6m71asubcv1f94t1b1jpkttr1o60w731ri7bpb7776677777666774764556657643564166764466577434506565333565454441675334576435457176544567733456607566767655346450744765756564534063556655467534516566544565544761664334655465666075673555775644517557654375466340745654576435744072445566545654512101110001100110",
-		polishedGranite: "0g0g90l56fi70plgu0v0yhw0sf1424tmn17eb8cf1aqna4f1e3al8f1e3x7un1jnje2n8888786866866565843344345444334374744554442446418444243334553342844444453344443262343344443734428345543644444431844444423445544263422344554433636444433443344442734444444464334284473344244442318455444445543341633443264434455264443444334447412111001110111100",
+		hitbox: "0g0g100W",  // Black
+		nothing: "0g0g1000", // Transparent black
+		"acaciaLog": "0g0g6ÖïYÇQYåĭYÁAWÇUZ÷nH50ķcyX6ħœcy4eSœ4i4{SQgNkQSīĘSÀSXTęgÀëïwT0ÀìXy1Tg5ķyh?g0ķwhko0x3gko4x3Ĉ/8Č5jĘ(wĈX1Àg0SĈj4iëSĊh42X",
+		"acaciaLogTop": "0g0gbÖïYVQYÁ)HPjZġîHĕàWĨěZöNYāRYĉÃW?3Y1xizNj1g4Q??ÒUQTAGIĀāāIÏkãÑQ?Q]>čXVVVVPÂ)üÆòĀï]Á*ïÅVVïÆTBüÆÇýýPÀ5üÆÇïï]À5üÆVVýÆÁlXÆñòýPÂBüVVVV]Â)ü?QQ@]Ã)ĀĀIIII>ČQV?ÄVQTgNxg0iz(",
+		"acaciaPlanks": "0g0g7ġîHĕàWĨěZāRYĉÃWöNYòiY4AJ9Aî0ÿ80ùAw2cJi3ãğãğËĖaAüP2KwoÐXë1ùí_0jAŁľãŁŁŕ92ÂTAX40cùĪzSāAAā4ŁğãļłĞSA4PkiA9cë0PNgÐ0İAĽŔÉGËĞ",
+		"andesite": "0g0g6éŞZâľHĆåZóEZÖĎYĒđY4ĎĨò61aĘĹĕĩ2BĜõwAħ]ĩŁV+peČ0ÚĘ^Úðj6Rĺc!ìóĎłTěd|ðŁÙüÃÖëēÒ+ë4ĻłÙ({*CħïĚ!S+rÖ)ĀÙgŀđĞłVĚSÚĩiÎëő$m3c)Ā",
+		"bedrock": "0g0g5ÎðW(ĪWVVHþÇHwíW4JĀ|iów(Ī%IÁ(ĀPÒAķ{5j]J^ïJ^A+1FyúMyÎÙwĿTĘĳPkú(üRdĊÂdðłQĩóxiÆ1ùŀïĞ9òyÀÚ0ŃQùòcJ^c*hCkr1iòTĜ^(ĀĿERÀ",
+		"birchLog": "0g0g8ŚĦYņ|HłÙZZZZĦšZÎâH)ĹYŖĵY0Č0Q4ëQ0rÎiÀÚJî04rÚ_ĝTĞĺSFÛđĘĔĝwòTBãĘ4]ÚìĻ?+łÖvĩÎwņŔğłÙjZÚëù]+Ŀ1iĿTĞĪÚŝĩB0ùfŜ&ķ6ĿQēĞŁČăÏļ%9Àł5wù",
+		"birchLogTop": "0g0gaZZZŒĖHĂÆWÁ)Hľ8HıľYľEZĎÄHĖGHĢďH1xizNj1g4Q??ÒUQTAGIĀāāIÏkãÑQ?Q]>BXVVVVPÂ)üÆòĀï]Á*ïÅVVïÆTBüÆÇýýPÀ5üÆÇïï]À5üÆVVýÆÁlXÆñòýPÂBüVVVV]Â)ü?QQ@]Ã)ĀĀIIII>AQV?ÄVQTgNxg0iz(",
+		"birchPlanks": "0g0g7ľ8HıľYľEZĖGHĢďHĎÄHĆCW4AJ9Aî0ÿ80ùAw2cJi3ãğãğËĖaAüP2KwoÐXë1ùí_0jAŁľãŁŁŕ92ÂPAX40cùĪzSāAAā4ŁğãļłĞÀA4PQiA9cëgPNgÐ0İAĽŔÉGËĞ",
+		"blackConcrete": "0g0g48wZ8MW4wZ8xWmeşŞÑØĪĳ9ŠóşĶøŞ;îŃÓyÀĈĶÃĞX^æĆşŒĔ<~Ŕ<ĢL4ĲţŘŇěøÌĩĶõ;ŞkŇěĚċŇŖĝĜř,ŉĩ",
+		"blackWool": "0g0gfcMWcTH8MWgÁYoÎZcMHkÎZ8wZkÁY8xWAJYgTH4wZsßWwíH1w)5ÑßIFIĒQģ9Éĩr|ģŔô|Qő]ì|ę<bńìĕô8QGÆÂQDDd717rýbĒQOĠ^ØĒ]hĒ@ń5|ÕńQBĽ1ÉÇ:yÉĜGĠ8ĒĜĒńQĕ@ĻĠîEwIhQ0ÆGĠhGŅD)XĒò@őĻôç|ģŁŔôĿXČVXgùĿ1ŅęÚ0|",
+		"blueConcrete": "0g0g3$ġW$ĠZ$İWlÀ?ÑT?QA]0@VUUh?Čkkw55kUÒoTlV0UhhgÑ0VUR0gÁ?QghX54UVS4Á0UýÁlÀUükÄ",
+		"blueWool": "0g0gj$İH(ŀH$İW)ŀY-šW(İH)őW$ġW)ŐZ)ŀZ<:W-šH(ŀY$ĠZ.aH<aY-őW<qY.aY0Q1ùčMeAwR^kčúõ0óĭI$ÉĀ,ġczĉ8ĐI]]ō4Û#sŋï}>aJgŎ!ayg[hıŉĄ1FĩĨkcÂþTöIÈõĬEI8UĊpĵ1]ŊxĵA4Åoĉ#axĘR#oěąI!kĉĨ^àI?-ðßĿXcPhÀëXù1^îąI8}G;[ph5F2ìĊďhc-ŇōdıèJĮx4ÂıUSwhÊë5ĸK{ŇlÛ",
+		"bookshelf": "0g0gtĚ*WĆkZāĻWéîZ$ìW)ĉHAÞWMÕZF,YSĨYùTWĒKYòŗYMóWáħHĤÁHãMWĞłHóEYi+YĵþZKĈHËħZdčWĦÓWVĈYPAY;ŚZÖÃW0RxcRgRgIw18RüXx^ÐĈë1ÂýFF^ĿþĈĈiĄŎđFXÑĎĊÏċŃŎđČíĿĎĊá3ńÅġĘĚŇōĆK2Ēý.m#wŋuňgMóÂĀ0Mõ020XgõygRh8K1^ÐmŀFcÂĀë3ĻÄĊmÂÃÙČĈkÒãĊmÃİb}ŊċļãċÉàļb@U3ńãćÉ!ćb}ŇaąīuĽŊýÙń06M^Ã06Mõ00",
+		"bricks": "0g0g9ęXZāUWòĞHĬčWĊnZö>ZéjHÝŚWĒÆZ0iO(0k(0hUÒhhUÎhÔäGVÔáâÓy]RyA]RyO0gk(0giÎhlÑÒVVÑÒmÓäGÒÄáRyA]Qyy]0kO(gkO0hUÁhhÑÁhÓáÓVÓäÒVA]Ryy]Ryg0gi(0gkÎhhUÁhhÑãÓÓäãÓÓäRyy]QyAI",
+		"brownConcrete": "0g0g3ÊňZKřWKňZqÖlÄÄÄĂþÏĉVÄÈTÈÏĂĎĒÄÒÒýÑāāÈÒVÒlÄVJāúÒþïĂýÓóÇāIĀĒāýÖþVāÖĎþIÄđĂÁVč",
+		"brownWool": "0g0giÒ2WÖ2HÑřWÞiHåNZÖ2WâyYKřWÞyYÞiYìÃWéNZÚiHKňZéRZì>WåyYÚ2H0QxùĉMeAw[PüčúõhĩĭI$ÉĀĮġczĉ7Đð]]ō4Û#sŋï}OaJgŎa2yg[hıŉĄ1FĩĪXÁÂþTöIÈõĬEI8UĊpĵg]ŊpĵA4noĉb2ÞĘRbyěąðFüĎT^àI?-ðßĿîcPh{KXùhRÐĆC8}G;[ph5EĮìĆďhc:wōMıçĹĮwīÂĩkSy.Êì5ĶK{ňlÛ",
+		"chiseledQuartzBlock": "0g0g6ņÙYŖĖHŖąZŒöYŊéWŚĦZ4Ja]+]5BrÙi]9,A0iÀdĞķ4üüd9wJ0Ń9_PFĘĿi2Ñ1Ę0ĜJÎxA|AČĨÀJPi@ëùā4kíPB.{4ìwJ0]Xû]mJ]òDw0iÀd*%AAù4û9CCĿ",
+		"chiseledQuartzBlockTop": "0g0g5ņÙYŖĖHŚĦZŊéWŖąZ4ĊĻMJĈhĘ4ë6ŇgB1ìEŇgD2ì-zg+Tí0biiR÷RK002öĘ0(ĊÂJiJJPAJPA00põ039kÈöpz8,2ö+wÑ@RëĚwÝRìík8hĞ1ìĘgiRĻúJĈ",
+		"chiseledStoneBricks": "0g0g7ĆÖZóEYÖĞYéŞZÇÒYÎðWåľY00]0ëRdĜłÖ+Ń&ŀAĞļü!090óáe2ŅÚĒÊe7JŀőÊ!nČïĒ)&cČìŏk!nČñE)aÿIBĐ)eðĲLEáeõĚİ!ÊdÉÑJÈáA2S0Jś:;ěç$üÂPAJPA",
+		"coalBlock": "0g0g5sÞZkÁHc(Z4gHEĊY0ü_ÑĎĸAĊăÒ)SFĞòÚĚP|ċ1AĚÃÚg9FĚă$J^ÚĞòÕiûÖiPÑüĸy2ÃÒCI4üłÚkTF(ÉEĊ^ÚJú5NúFĜ]ÚüX5g9ÚĊxÙíÃÚgÃÕJăQJòQüł",
+		"coalOre": "0g0g7÷-ZéŞZâľHÖĎY;ŚZ)ĺH?kH4íú|y0Bm04ĞıFĠôÖp90g{ČiiQČŁ5gòwÿĉ#QķQŐB6ÂP|J0ÚČ0igÃķĊRAmUĞù1ÒoăS+ÂAJ0d^1F+2ĂP^0ıPmüPFg1wkúAJÀAJS",
+		"cobblestone": "0g0g6ÚĞZÎðWĎĂHÁ?WĞłHóoY5C^óăl!ÈŋÄě?!ĈVĐmÕCíÕĈļ_KĿöCAđì_TãĬ?UļÕA!cĜbTęh|6wdþĹÆMÁSĜîÁĊó_wmüĈi$QģBmwÏĐr?MÈVmíÕ^ó8ĜlP)úT4ĿĐ",
+		"cyanConcrete": "0g0g3lĿYlŏYlĿH1IÀpE?SmkÀw6PÁB?S4k299úkÄRPÒÎwĊ?A2ÑIĀ8püUiSÒgý95Eòak?ý?1RÀFÀKSÒù",
+		"cyanWool": "0g0gelşYm8ZmFWmPHlşZm.WlŏYmÖZmÇHmoZlĿYmÇYmÖYm.H10zTÃKy6BGîā6pĎpôāĲF:ńĮ*x:ú#PģxçÇROÓimO6Ó_@1@pÎ1GîyJñÇGNhG*ģ1:Vģ<ÎĝTpmF6poÓý?GąGģOç*ĠJÂ24Vh<4lÓlhÓĤÓz%GÄļĮěFÖłāğĳFĚÃäh%gÑĚ1ĤúÉ4ô",
+		"darkOakLog": "0g0g6;ĨZ(úW]ňZEìW(úHÇiY50ķcyX6ħœcy4eSœ4i4{SQgNkQSīĘSÀSXTęgÀëïwT0ÀìXy1Tg5ķyh?g0ķwhko0x3gko4x3Ĉ/8Č5jĘ(wĈX1Àg0SĈj4iëSĊh42X",
+		"darkOakLogTop": "0g0gb;ĨZ)ĉYAÞWsKZ{ĨY]ęHÀňY(ÝZ-úW;ĉW(úH1xizNj1g4Q??ÒUQTAGIĀāāIÏkãÑQ?Q]>čXVVVVPÂ)üÆòĀï]Á*ïÅVVïÆTBüÆÇýýPÀ5üÆÇïï]À5üÆVVýÆÁlXÆñòýPÂBüVVVV]Â)ü?QQ@]Ã)ĀĀIIII>ČQV?ÄVQTgNxg0iz(",
+		"darkOakPlanks": "0g0g7{ĨY]ęHÀňY-úW;ĉW(ÝZEKZ4AJ9Aî0ÿ80ùAw2cJi3ãğãğËĖaAüP2KwoÐXë1ùí_0jAŁľãŁŁŕ92ÂPAX40cùĪzSāAAā4ŁğãļłĞÀA4PQiA9cëgPNgÐ0İAĽŔÉGËĞ",
+		"diamondBlock": "0g0g9_ĦHW÷HncHľZHZZZćťYÔŅWàŖWeŒZ00h01hg23QVO*ÄÐN4ÓàVKh7N4Ô*ÅK0GÂlâVã0ÔãÂlVÅK6VKo3VGãÒÄ1o3ÅGÓGK18lGãÔãK0ÏlGÓGÓÓ7ÏmãÒÄÓÓÅ8gÓVK65Ä8gÒÄ1gGKÏhGKh6Ó0ßgg1gÓ0ÔÆyíEIyIyI",
+		"diamondOre": "0g0g8÷-ZéŞZâľHÖĎYÔŅWćťYW÷HľZH4íú|y0Bm04ĞıFĠôÖr90g|īiiQČŁ5gòwÿŐ#ĻķQŢC6ÏP|J0ÚČ0mgÃśĊRAmVłg1ÒoăS+ÂAJ0dÊ1F+2Ħİó0ŃPrkPFg1wkúAJÀAJS",
+		"diorite": "0g0g6óEYĎóWĦţWŒĖYĶ;ZåŎY4üİPĀă)yR×,gÎ+E?ĠóÒĜbÕX_{oî|iŀö+Ň]ČıÖoŀhĠFM2óöĞTQĻÉúpbĉĚjKĐŇNxRò+lÚóAA(Ã&njÝü^wĐìÞīĸX6įöĊcÒ+ŇNgÉ",
+		"dirt": "0g0g7ĢlZýĜYåÃYÆřYðoHÚĞZâÑH4Č9PČg?ČÐSĈÉ9(J9Cĩ)yķBkaEðÂ%UÈ{üÉÖ)ù9Eù84Á]2Â$üòFkÃQČĂ?ČŁPwh?0ìKNÏFihČĎÃ{ĊRPAë?$ò{)9FXĺ1kòEiĊByÃ",
+		"emeraldBlock": "0g0g6nkHqěHîŁZ>įHnãWuÏY0000019AĂÖ]ń800w0Ëc)ûJ@Ë8w00mV8wJÚoÒcwăúĀ?c(ĂúĀ?8(ŋ4gÒc(ŋCgÒcħĄim?gĩPAþ?cB01ĠÒgJPAJËg]4ù8ļ+łÚĞłÖ",
+		"emeraldOre": "0g0g7÷-ZéŞZâľHÖĎYłťYnãW1ňY4íă|y0BiB4ĜóFĜĖPmİ06ħ0pÂQđÃwbòwăčÒ(gQë&4ĊPPĜħÖČ00gÒBĚRAJÛaÀŀÒkă^Ō!AJ4Ĉ1Þ%Ċ5İ+2ßČ]4üP,g1wkúwiÀAJS",
+		"glass": "0g0g5ĺĖYē|Y000æģHôcZ0000019AJPAú9wJPAû94JPAû8ČJPAû9AJPAü9AJPAû9AJPAü9AJPAü9AJPAü9AJPAü9AJPAüFAJPAk9AJPwüFAJPAúCpAJP9",
+		"glowstone": "0g0g8ŢÔHĵlHïRYÚiWZZZZĴYòċYÞNH5+T%^ÄĈYĸäŁb?ŋćŢĘÌĶgÃŗãŝèĲ_mćĐÕÈ2wĕKŔùb~ŋ>rĜÍä$āĉÓĦÂñīČĒe+ÿĘFùÂÑDŚÜDïĳĦğşnœ5őjĩÈŗ#ò_ĭíćÜyćŃlŏÍĞť",
+		"goldBlock": "0g0g9ŞNHšřWĹÃWZŠWZŢZZĜZZÐZZXYĵNH00h01hg23QVO*ÄÐN4ÓàVKh7N4Ô*ÅK0GÂlâVã0ÔãÂlVÅK6VKo3VGãÒÄ1o3ÅGÓGK18lGãÔãK0ÏlGÓGÓÓ7ÏmãÒÄÓÓÅ8gÓVK65Ä8gÒÄ1gGKÏhGKh6Ó0ßgg1gÓ0ÔÆyíEIyIyI",
+		"goldOre": "0g0g8÷-ZéŞZâľHÖĎYZĜYZŢHšĚYZZZ4íú|y0Bm04ĞıFĠôÖr90g|īiiQČŁ5gòwÿŐ#ĻķQŢC6ÏP|J0ÚČ0mgÃśĊRAmVłg1ÒoăS+ÂAJ0dÊ1F+2Ħİó0ŃPrkPFg1wkúAJÀAJS",
+		"granite": "0g0gaĞÖWąčYúïWéUH{ĹZĞDHđĽHË3HıÆWŊaZ1xMihTÁmiãoMjMjNnhiCMûnlnihÅmÏNhNjzGwÎyjh+ÏjÞygMMmÐhjÓÏOjh1A,ÓMylxjÓÐNhMÓCM+ÐljmÓ2ÞMEh,+ÓnÎj>h+RRNMhMzhFiÓMDNÓxhoÓzãiÓgMÓh2yMMh+",
+		"gravel": "0g0g8ÒÒYó7Zþ-ZÞĎYþÇHìŞZĚóWĚĢZ5,$âł#þģ_ĔÂ{ĝíİþĀĳĜĺÊĞ/ÚÓŋńĝôdlĈİÿİØ$#èßgŔùĿÒčģÎðÅÖ$ÇńčY#üŁĴáįÆĚěKĞj<Ùł#ĔłÙ..$BôFĒŁŌ(ĹÉĐþcGDÚ)ľË",
+		"grayConcrete": "0g0g2)ŊZ-ŊZ00000000090000000000000000S100gg",
+		"grayWool": "0g0gd-śW<4HTAZTkYTAY)ŊZ<kY-ŊZ?*W?AZ?)Z.4W-ŚZ00i0)ÀÓ7jIüh71Å1ĂhóÎ^QI>g!rq1ĒgòM1yV6cy5âa5051À1IyhmĀMI@0I>đ0!OđQÝûb15hc1pVj3IkIĂQó>đmM10ObA03VjĘVĀĬiÑI*>IüÎÁ^hĐIhĎNò0ÑĘÝþbĐg.0Ă",
+		"greenConcrete": "0g0g2PÏHPßHh;ĒÉÙŐßÆðM!ľĈÇylĖ|aŗÈëÀļĸŚđøcKæÙ",
+		"greenWool": "0g0gh|íWÁúZÁĉYÇĸH|úZVĨYÇĨYPßWVęYÓhYÁĉZPÏHËňHËŘHÇňHPßH|ßW0S1c4F÷4w7TÂúā^1įčĄ!rkĎMaOcÓČĬS@Ĭ4{2Āī5&!ëìõŖy91õ7.ħħ;13ĩċù1^@M9]q^ČČį8Âûl÷16ĩý÷M÷[k1yIÞEgyí,ą]1ÂýpFàcÑĘĬKĻíI80gëXÓ08ÃĄB8ÌGNfgķÑČďMÈÿpaæõĬFòÐgĎwċ]įQow-së5öÀ^Ň0Ù",
+		"ironBlock": "0g0gbĺ;ZĪcWŚĶWŖĦZŒĖYŎĆHĢŒYĚĲWņéZŊ÷WľËH1g0001hgiyyO)VVÁlVVVVVVÄäIIIāĂĒďiyyzOVVÄlVVVVVVÄäIIāāĒĒďizOOVVVÄlVVVVVVÄäIIIòāĒďiyyzO*VÄlVVVVVVÄäIIòāĂĒďiyzO*VVÄlVVVVVVÄhhhmÎÓÓÓ",
+		"ironOre": "0g0g8÷-ZéŞZâľHÖĎYĦÕWŁġWĖ,HŊaY4íú|y0Bm04ĞıFĠôÖr90g|īiiQČŁ5gòwÿŐ#īķQŢC6ÏP|J0ÚČ0mgÃśĊRAmVłg1ÒoăS+ÂAJ0dÊ1F+2Ħłó0ĳPrkPFg1wkúAJÀAJS",
+		"jungleLog": "0g0g9ÇhYÖNWéßHÀŘHSĸW;ĨWVMYâJHÎÏW1y3OOhg004S404VQQ@ä?US4xh0hy33O(Sh04Q6ñK03OÕÑ??Vh10OO02x??V1g>O(0iwQÁy00QOñðQO)Väë0hhgÕñ4?U>(>UhQ0xh6KQQjÕÓ3)Q010Q?ÀhTg01g>O00OO",
+		"jungleLogTop": "0g0g9éßHÎÏWSĸW;ĨWĢmHđŌHĦ+YýČHąīY1xiOyi1g4Q??ÒUQTAGGñIIGÏkãÑQ?Q[>BáVVVV]Â)XÅäñâ[Á*âÅVVâÅTBXÅÆïï]À5XÅÆââ[À5XÅVVïÅÁláÅGäï]Â*XVVVV[Ã)X?QQ@[ÃAññGGGGRAQV?ÄVQTgzxg0izw",
+		"junglePlanks": "0g0g7ĢmHđŌHĦ+YýČHąīYåÃHÖiZ4AJ9Aî0ÿ80ùAw2cJi3ãğãğËĖaAüP2KwoÐXë1ùí_0jAŁľãŁŁŕ92ÂPAX40cùĪzSāAAā4ŁğãļłĞÀA4PQiA9cëgPNgÐ0İAĽŔÉGËĞ",
+		"lapisBlock": "0g0gdB×YxPZ*āWMIYtFHxEYsŐWt8HoĿHoĿYt7ZFÆZkĮW100gzkkkljÁÄâÓâÆ5MnVâåÒæ7ÁVÒÁãÔæ5ÞÅGÒrãÈbVVGÔĝÄä5ĝââåÔÅ×7ÅÔGğþÔĂDÔããÅãýÈDÓÞÄãÓþÆ7ÖÒlÔÅÖÆnâāÔÓlãä5ãÇþÖâÅÙlÅÓÓþÔGÆ@ÅGÓãÓâÊoIIñõāĳĳ",
+		"lapisOre": "0g0ga÷-ZéŞZâľHÖĎYpÉZxÕYloZgłZhqZgŀZ1gixzyg0hO(01jOii?@jyxãh1g8+ë10yxizN1N2hgj)ìjïzwx,Xð1ðhhEÐw2iNw06Þ1E)ÓjNg1MEIð-ÁMOíOäÏEÂhÖJ0Oh6Áiw9OäÐ+K0iāÎåKw1ixÓKg1yxhhg1hhh0",
+		"lavaStill": "0g0g*ńĨZļÀZńęYőîZōÐHńřWįŇHĴgYĸSZŀúHńŉWļìWļÞWŉ2HŀęYĸÁWŉyYŉ2YōÃHŉiYňřHįŗHĸwYļÎWĸ(ZńřHŉNZŢďWŕĻYŀĉYĴwYĴ0YńĸZńęZŕīYŕīHĸÀZōOWŀìHŉiZőČWőüWŕŋZŕĻZĸ(YŉyZįķHőĜHīķHŚ*YōÐYőîYōàY0gRcTToß1Ay^EJĳ)ŉI;Č1MkûÀĹTxVÿK6]5ĎŃÁķÆåŚwïÔĿCDz0ëÆÏ>ÒÑāĀAOÈáî8ù9Ã(İıxĹ^BGP-^0èőÃÆňË%âĨÓĒĴuĪIoí11ď]Îm÷tŞįxVõĝAòäíĽqŌĄĥð5ÖēħęÎĘVŚMĥïĈwĩĳ~#&tñąMVĔ(mnĴħÍKĩIoÏ9ĥ*ńCÒ[(üįKàEĒĉÈMÎýÆî9ĜùÈEÆ)|ķ[éKUPlİ",
+		"lightBlueConcrete": "0g0g3C$Yy$HysHiVUS1kklk?ÀgVKk4ÂlVTVlÁhS5UhhlxTTÁkVÁ9ÁhVgFSÀ1ì5Ò5VÎkh??TlV4VlSl",
+		"lightBlueWool": "0g0gq&ÙZNąW!ÊZ/ĴY@ťW&éW&öW=ŔZRŤZC;Y!ÙZC{Y~uH[eW+ĕHy$H!{Y+ĥH_eH/ńYRŔZRťWNąHC$YNöW=ńZ0Q1ùĎ/iĉö_pĿĭĉĵ2ĳŎħMÙąm^ÛQđ@M7oØDÆß#čxïJ;^NV,ħĳyhPí_yŃ1%ĩŌĀmÐ9Á÷zØeōMj8ÆīuÂ1ēzĆÂ?xòsĞĪõęĠRĪĔĻčŀFĿįĸõüùðP7ûÊOö>ÁàùĿü1ÝáĎĮĘÂā(Åp7@(ŒĉĿİwÛ{ÖEĭ{ÑðŐcŜÐ|òĹħÇÒ(È{I~wlĚ",
+		"lightGrayConcrete": "0g0g2éŞHéŞWàĝGşąŁÊļņZÍŕYŜGHņ<Ŏŉ:|ĞćŠĞľŢŤÔŤŝ",
+		"lightGrayWool": "0g0giðnYðnZí7Y÷-HþÇWJ]YþÆZéŞHí7HĆåHĂÖWóEWéŞWó-H÷-YJÆZóDZĂÖH0QxùxF÷xõ]pÂýpØi2Ğw#ÂþĻđĲNĆśČĬo{čħ×aĻĉï!!ĩNoŎ8ĩyg[TĩĈĄ19ĩĜ4_^]ÎöÐÂ^ĜČĵ8Âûl^g{Ċþ!Oķlk(aĩìĔRaĽċąÒ9ÂþĥFU{ÑĐĬóþNõ>g^ÀħøgRÃąÒë}âA[p6śČĐåÂýoØ:ÌčĝP{@ĝcĎ^ín=2SUňTPÆ^ĉ5^",
+		"limeConcrete": "0g0g3ÌĉYÏĉYÌúY402ë00ë88ùEwg1204000ëëëAwëw2A0ó2Ĉì4A14gh00020wEë01g00oĈìS081Ĉ820",
+		"limeWool": "0g0ggÓęY×ĨYÏęYÛĸYç1YÓĨYãŘYÏĉYßňYÛňYßŘYñNH×ĸYÌĉYH1YHhZ1w)VÓßIyĂģ@ĳ2ÊĹj}ĪťõÛÓŢ×úÛĨ=ÊŕúĜċÇ@éÆÂQDDÌË1ËsB1ģ@O-_ÙģÕhģÓŋ5Û×śÓB@ÁÊÂ;yÊkľįÈģ+ģ~ÓĦÓśįċFBIh@5Èéqhľ~%)ðģĊÓŢ@õĺÛOŒZĄŏĎĜVðgB]1ŖMÑ5}",
+		"magentaConcrete": "0g0g4ĐİZĐıWĐġZČġZ5ÒSüVÁPTÀUÆVÇ@Ŀì2Î^áÇĮSKÊ@ņ3Äĸ45Ä@9ÎVoRtÞä4VVx}ĕãÁxQâ11Àhïxl50Îĸ",
+		"magentaWool": "0g0gsĘőHĜšYĔŁHĘŁHġbWĬ:YĘőYĨ#HĨ#YĐıWĥrWĔŁWĥbWĨrHļöWĬ:ZĠšZĜšZĐİZġaZİ{WĸÙYĥrHĬ#Yİ_ZĜőYĔıWĴÊH0QNkĭ/iBE_ÐÊŎĊhqĴp$Oéz/Ĺĸ?góġdKÜ]Xü)F@5ĿÙĳĩńFıõyüPÈ|>A1N>toÞàćßi×çø7.m8ÊŋuĀpė>ĞĀRnĄsĨĳ|ĊSRĳyśĎdOÊŐĉĵĬgñÁ7ċŉĎù{hĂķXĐpĚĻĎ%8ÂĄUPxUñ.ĢTőœxÁ{ĸPĵ÷ĖŀaFğàĴăwzÇęÎðýĀ~ìāś",
+		"mossyCobblestone": "0g0gbÎŋWÁàYĎĂHÇĜWæ*HßlWÎðWóoYĞłHÚĞZÁ?W1yMj?6äBiñÞ)ÀÞÔÿÏßúÀ3úhåÓåMàågÀhđÎnÐÓâV3ì?ßþďwÝ,DgDåMnåiGhnúV1ÿÔúkÀgÝÀ+đjÃ0āG(j1å0MhpûgÂÞjj4ÁÎßDj?ú?5þGÿ47ÞÀÿåhåâååpGþn1nÓûhmÔíÝ",
+		"mossyStoneBricks": "0g0gcóEYĆÖZÎŋWßlWæ*HÁàYéŞZÇĜWÇÒYåľYÖĞYÎðW1z)>xQ3?m7>R6ÓÏDgÔNNÓ(ãEmþÝ.KÖÖäpFþCÏ+ĂÕ9ßÖāzDãýĂGđďyGāÔģïģIïVÉģQMh81hjQw06ÕgK036KÓĀmùùCK6ÏĐpÖÓÝÓÓJĀ3@6āāđyĀ4ÖþÖĒGFÕÿåđĂĝVÉIïVģV",
+		"netherBricks": "0g0g7oMW;ßHQJYwTH(ÎZEÁY-ÎZ000000BmÂQþòþÎČJKÑĂÅBĚÅA0+ħ0+ħÒAãÑĄ}7PAbPAæP%æ_čÙ03Ù03ŀčĂŀĕĆùÖ2ùÖ6ęŐuýİudĘłdĘłĲÔJ_ÓþJTČăTAJĸAJTA",
+		"netherQuartzOre": "0g0gcÀÁHUíWÀÎYÑĊYÝĪWSÁHĕĭYľ#YĞĀZï4WŒąZÚÑW12NQOÃ)MjMBzQ5Ow>>l@äwN)ü)^GÑT3zPQďÑûQAM4@ôPÔØO>3QĜĢäĘ)ÑT5CðĜ>!òN)óKOQæÑzPďR))ĐĚk,ôÂ@QĜÂN@Ě5×SRi3>A-ä4-(k)P@ímòSzQûxÒ))Oy)R)lzQO",
+		"netherrack": "0g0g7ÀÁHUíWÀÎYÑĊYÝĪWSÁHï4W4CČÛğp%ýÃIÄķ÷ORÒ6ĄĸĭõßgĺĂ)ōĵ?phú+úĎŊe#sö7)XUŊ2)ŝÖĭùÛ@s}ÕőÞį2MįőĂ?×Ö@ïÁóóe*o][oMİĈ]ġĈ}{ĸVĮrPįĄ*.r",
+		"netherWartBlock": "0g0g5ä0WÕgWÆ0WüÎYĔíW02I0w10ÿ24Č1A2084oQ0ó{wwÀ0ùwJ1{8Ĺ04RE0h0Sù52ìwNë9A104ë809KkgQ4^Xy1SyIAùU1Ċ21gë4yg50g0wg17g1SÃ10ķ",
+		"oakLog": "0g0g6âÐH{řHúīW-ĉYËyYāŋY50ķcyX6ħœcy4eSœ4i4{SQgNkQSīĘSÀSXTęgÀëïwT0ÀìXy1Tg5ķyh?g0ķwhko0x3gko4x3Ĉ/8Č5jĘ(wĈX1Àg0SĈj4iëSĊh42X",
+		"oakLogTop": "0g0g9ËyY{řHâÐHĢVZĖ*HĩãWéîHýĻWĆkZ1210x0g0jO))U>OM3ÓGñIIGÀ3ÒÃO)O,(4àQQQQ-Sjî[äñá,T4á@QQá[(4î[]XX-S4î[]áá,Skî[QQX[T4à[ãäX-S4îQQQQ,Sjî)OO*,T3ññGGGG(3OQ)?QO(1010x0i0",
+		"oakPlanks": "0g0g7ĢVZĖ*HĩãWýĻWĆkZéîHÒRZ4AJ9Aî0ÿ80ùAw2cJi3ãğãğËĖaAüP2KwoÐXë1ùí_0jAŁľãŁŁŕ92ÂPAX40cùĪzSāAAā4ŁğãļłĞÀA4PQiA9cëgPNgÐ0İAĽŔÉGËĞ",
+		"orangeConcrete": "0g0g2ňëWńëWRgguhKoCįù124Sw0x8QùĜ2Áę1ÄSSSo40",
+		"orangeWool": "0g0gmŐĈHŔĘYŌùHŌĈHŘĨWŠŘYŐĈYŜňHŜňYňëWŘĸWŌùWšRYš1ZŔħZŔĘZšiWšNHŘĸHŠŘZŜĸHšyH0QNkĭ/iBE_xĿĭĉĶqĳśI&Ùu]ĩ~QgðM7w_7ĤùOĉ25ö:õRýFNõyüPi|3A1NRŜĀÜÐCÂhıØeōMi8Æīudpô3ĆdR4ÓĄĶOĳĚ-ROĆĻčĻMĿĩxõÙgðT7îÌċùQhđSĤĐpõáčŎäÂþīPxUð(ŒTĿĭĉ~Ph7icö]ŏEŌÐ{ÖxŊÇăxĦcÝ}ĸāĘ",
+		"pinkConcrete": "0g0g3ļĀZļāWĸĀZ5QSÀ14gkgk01gQ1À0gQ4000ghÀS0?0]9kgk41Q42T4g01hÁ105k4S4hS00gggQÁS",
+		"pinkWool": "0g0gvŌŀYŔšWňİHř!YŝçYŌŐZŐŐZŝÉWŝØHŀđWňİYŝ/ZńġHř/YŝĳYŝôZřqHŕaHļāWŝĄWŝĤHŝ^ZŝĳHŝçHŕaWŝăZŀāWŐŠZŝôYŝĔWŝ_W0Q1ùĎ/ičĕ{ÖŃŎĊh3dp((èŉ/}ęQķô.7ÕÜ-Ňà$D+ïŀ;aĹË/ŁĳĩhPÏ_Nŏ1&îmooàġÞ÷bçø7.l8Êŋuå1ėOćġRpĤĄĠŃ{Ĩħ{Ń(ŤCuFŃňĉĵĶÀñ|7Œŉěö|ÁéŇŇI1ãáď7ħáĄĸĂpmñ-œTœœĉÞķĸ-eÛčr9ĔŞàĴĢċ0ÎàÀÏãë~ùlŚ",
+		"polishedAndesite": "0g0g9ĎāZĞıZó.ZðEHéşWÞľWÖğWÇâYóPW11hhh1gijQ>OÃ)Ñ,jOO)SIO[3Õ8Q)Oî,jO*NîQQ,k>)Q*OQ@jOX-Iy)Åk>QQÄUO+jEÃO-ë8ñj>)>)>N,j-ëXQIO,mOOOIOIÅjIí)QÑ(ñjOQQOíQ,kQ]îO)>,ðGGGGÓGG",
+		"polishedDiorite": "0g0g8Ŏ÷HłÚYĢœWĲ$YĒĢYåşWÎþWó-Y0i00J25+_5@VAkòKEĆ$ġz%)ýxįĀ!)Ĭ5ČįiC}cùTÛyĆ92Ī$ďmMĚÉQ-ą$þû%ČdB]ôÕĚ}cIł1üądíĻdjm9þĀ!(þtCİÖþąŞÉãĽŔÛ",
+		"polishedGranite": "0g0g9ıÆWĞÖWĞDHđĽHąčYúïWéUHË3H{ĹZ00gwy2zz4VQU)QV?kk>)QÑR[4QÑVUOV@4QQ>VQQÄCUVQQÁU@5>)ÂQQQÅ4QQ@U>)@B@ÒQOQVBAQ?U?UQ@lQQQQAV@4TVQÑQ@Å4OQQ>)V[BU?ÏQU>+AQUQVQT[ÔGIGäGGI",
+		"purpleConcrete": "0g0g4ÑòZÑåZKåYÑåYlm100ĸþTNVQgp5820Áĕ0S2RV1Àlhgìg4pĽjŏk0ÆT)S?lüUìlĻRS1ý0TTp0T]Q4T1",
+		"purpleWool": "0g0gmÙóWÝĂHÕóWáĂYëģWÙĂWèĒZÑòZäĒYÕòZýcZXģWáĂHÑåZXĲHIĲYäĒZèĢZõłZXģHÙĂHIĲH0Q1ù5MeAwPTüčúì2^mČzÉí,Ģ1zċpEðS]ŇXÛ3sŋ5Ã(ħígŎĊaJg[PħŇs11ĩjü1ÂþTõÕÈõĬEù8UĊpĺ1]ŊpĺAÃPĀ1Ĉ^ÞĘPċ2ěąð1üĉĬ^ăI?-ðßĩîc]gcKXú0EÐĄC8}åĥDphlEĮòČđú1-ŉňöıéÀĮwīÂĲ]Qw]D05Ĺo|(1Û",
+		"quartzBlockBottom": "0g0g3ŖĖHŖąZŒöY05Èë?ÈĐ1ÄĒù5Ēč0ÄčÈþĒÄĒÈđV0ĒV01VU1×À0þù05006Ē05ĒĈ0ÇÒ0Vč05ĎÀ1ÄS01Ē",
+		"quartzBlockSide": "0g0g6ŚĦZŖĖHŖąZŒöYŊéWņÙY0000005AăÚJ{9+łÕJV%ĞĹAČý%AăÖ+Ń9+łPĞŃ9yPÚĜý4J^PAý4Čł]J|9+òAJV4JPB+Ń4JÂÚĞĴ4üĂ|y|9CĹAJV%)òAČüJłAJ_Ú",
+		"quartzBlockTop": "0g0g6ŚĦZŖĖHŖąZŒöYŊéWņÙY0000005AăÚJ{9+łÕJV%ĞĹAČý%AăÖ+Ń9+łPĞŃ9yPÚĜý4J^PAý4Čł]J|9+òAJV4JPB+Ń4JÂÚĞĴ4üĂ|y|9CĹAJV%)òAČüJłAJ_Ú",
+		"quartzPillar": "0g0g4ŊéWŖĖHŚĦZŒöYh&Ņtiu&%uŕĹň&ňŉŕŕ%xŅň%%&ňŕňyĹŉŉŉŅyŕ%uŕuńŕŅhĹňŅĹiňĹŉŉňuyŕ%&%Ŕtŕtĸ",
+		"quartzPillarTop": "0g0g5ŊéWņÙYŒöYŖĖHŚĦZ54Ăó6ÁP4ù90úFDs÷)JÎ.rJ@ë1ħJP8ĩóQŋúđi^*i^FjòĝkíF2^?k×D4×?i2CĹ^QłúđkTħJP8ħ1.AJ@îPDAJ)úF0J90J8ęk|yò",
+		"redConcrete": "0g0g1õíW",
+		"redNetherBricks": "0g0g7$0WÕTHÝÁY)0WQgH-gHUMW000000BmÂQþòþÎČJKÑĂÅBĚÅA0+ħ0+ħÒAãÑĄ}7PAbPAæP%æ_čÙ03Ù03ŀčĂŀĕĆùÖ2ùÖ6ęŐuýİudĘłdĘłĲÔJ_ÓþJTČăTAJĸAJTA",
+		"redstoneBlock": "0g0g5ŋëYĤëYČKYÝ(WüÀW0000004íÂQí]4XĂPyI4ċzßCI0đs}Q05@łÚĘI5ĐłÚİ8a@łÚĠù9ołÚİ859q÷]I5]łdīë4đsÛ]į5BAJAù0īköyI4ù9]J]000000",
+		"redstoneOre": "0g0g9÷-ZéŞZâľHÖĎYü0Wţ0Wõ0WĐgHĠgH1gixzyg0hx(01jOiiORjNxUh011lÎ1gyxizN1x2hgh*ÞiÅzwxoá@1@hhzMg0ONw05T1zÅih2h1MDÓÎ01MxROw3Myhhg03BK1iz(2âá@i0lÎh6Îxhix01g1yxhhhwhhh0",
+		"redWool": "0g0gdüíWĀJWùíWĄJWĐĊWČĊWĈJWĠĹZĐĊHõíWĔĚHĔĊHĀíW1w)0VwÓ2*GïM21JjójĒÎÈVďVM^h/3ĒMçÃ3QFĭ2Q2ya919hw1GQO+ñÃGÄhGVē0^VēV$ĝ1Ĩ2OyĪoJ+5G*GĢVæVĐmÃ30Óh?0ĬylhJĢF)ÒGÂVďĝÎûÈOďĒOĎUäcÒgwĞ1ĒMÉ0ó",
+		"sand": "0g0g6ŎăYł/WŊØWľpHĹŏYŖĔY4Ċĸ?ĊĂÑĚŁõr8@+9AĚŀFNĺPĊİÓþóEþ^$üúÒNÇKğÇÛiĲ$þ_%ĚbÒiĄÖüÇ5JÉ(ĚÃ(ĊıBoıÙüÇPĞÇÒĎôlmı?laEĊÇEĒú?oò?kó$üÁ",
+		"smoothStone": "0g0g7éŞZâľH÷-ZĒĒYĊóWĚĲWĆåZ42ÂByg&,ÚĕŐqOÖsJ+ŀmĿłĞğy|İsãłp*ĞłÛÖĈ|łÒĕĭŀÃÖČĺPÕmĢŊÚĭő%ĞŊĞģÕ&.+úįŉdğÚĝģ×Â[ÙßÚqlįłĕĠĿN:Øãġx5wiSJg",
+		"soulSand": "0g0g6ÇjYSĩH)ĊW]ĹZÖQHåïW4A3{č4ëhÕBCyÁĪFcĊňMItöþĩTįĴõĞ]dIUdħpÖ(KÙq3ÚC3ÏÈRc+İKPRì(qyĬoÖIħ}No{RĈÑwĺRĬwÒðĂëİÐAĞĀĐ^T$4Ĭö-pTÿd",
+		"spruceLog": "0g0g6-úW(ÝY{ĨH$ÀY$ÝYUňZ50ķcyX6ħœcy4eSœ4i4{SQgNkQSīĘSÀSXTęgÀëïwT0ÀìXy1Tg5ķyh?g0ķwhko0x3gko4x3Ĉ/8Č5jĘ(wĈX1Àg0SĈj4iëSĊh42X",
+		"spruceLogTop": "0g0g8UňZQĩWÇiHìîYåÐHòûYÎyZÞRZ4wSQ20%ğsĚ+ŀd%ĦZŤĐdÈłÞğĀj.AJ[ŇLġğŢ[ĉj]ČûPĀjġĎĺĮŇjġĎĺ[ĈOġČûİĉj.ĚņĮŇjġAJ[ĈLğrÚľĉfŖĞłÚĀdġsþ@Ŀ40SQ2ë",
+		"sprucePlanks": "0g0g7ìîYåÐHòûYÎyZÞRZÇiHUňZ4AJ9Aî0ÿ80ùAw2cJi3ãğãğËĖaAüP2KwoÐXë1ùí_0jAŁľãŁŁŕ92ÂPAX40cùĪzSāAAā4ŁğãļłĞÀA4PQiA9cëgPNgÐ0İAĽŔÉGËĞ",
+		"stone": "0g0g4÷-ZéŞZâľHÖĎY0ÖĢVÇýÅōÜēđVÀ?5×þĎSB?VØĠü8!VėĢÈý1k5ÄÁÀk1ŀėā×VTV4×@ÿŕ6þčĐÖVV0VÈTÒ",
+		"stoneBricks": "0g0g7óEYĆÖZÇÒYéŞZåľYÖĞYÎðW4JPAù2$(0dĞĩxðłÙ8Ł&(sÎĮyNįĪß.ÈiğAõ^ŉĞłÚĞł×ŀ%JÉÚĞAJR4JPë0Łxë3dðŉ&8rK,!MĭĿÚĠŉi(ŋJĲÏdįŃĞł×ĞłÚłÚJ_ÚĞ",
+		"tntBottom": "0g0g4ĘÂHĿęY÷-ZùęWkkkkØØØØØØØØZZZZkkkkØØØØØØØØZZZZkkkkØØØØØØØØZZZZkkkkØØØØØØØØZZZZ",
+		"tntSide": "0g0gaŐ1YĿęYĘÂHùęWZZZĶ;ZņÚY)ļHoÐZĦĲW0i0i0i0ihzhzhzhzhzhzhzhzhzhzhzhzhzhzhzhz?ÓVÓÒÄÓÑ@GðâÆÔäUÖÆVGÅÄãÓ?ÔÓãGVïþ@ÆÄâÆVðUāāāāāāāāyOyOyOyOhzhzhzhzhzhzhzhzhzhzhzhzyzyzyzyz",
+		"tntTop": "0g0g7ĿęYŐ1Y÷-ZĘÂHVVHùęWgTZ4ë]4ë]FNûFNû!ÂĎĸËýÛĮĕÜÓŔ4œ]4Ň]FNěó;û!]ĞŀÇýÛľ+Ĺ[ĕ4òĞłc]!{ĞĹ;û!ÃþĸÖlÛŀĔøÄŔ4ħÝĿį]!NċMOjFÂýFÂýÛĽŔÛĽŔ",
+		"waterStill": "0g0g8Īc%ĖĢŔĎĂÚĺ|%Ķ;ŔľËÚZZŔŢŖĕ4üúAùŌPyPBAJBAJA0ÂFy1A2P]JJ?AP]ĊTAiJ4JPAþŗÞJTAJSŀñĀwë_PAJPAÂFAÂQíPPAJPAúPAJPkJFAPA2óPAúzÕawÿşAiP",
+		"whiteConcrete": "0g0g3ĶËHĺËHĶ|H4?541S4k40ggh50g?À0Àk1wA0l4g04U0kQ?À4l00U01hÁ0044Àl0hÁ1QÀkTg4Á5h",
+		"whiteWool": "0g0gnłêWŊĆHľéZłéZŒĖYŞņHł÷Wņ÷WŚĶWŚņHĺÚYŒĦZľÚYŖĶWZZZŢŖYŎĆYĺËHľÚZŎĖYŖĦZĺËYŞŖY0QNkĮRU*ĔÙÉÊŎĎ1reoįOçĪ,=ì_Ĺÿ.%Æ^ŗXø)uŜïĶÙĳĚýV/Ķyü×J÷ŚU1*RmsÎàĔÂiØçú7.)8ÊŋĉŖpıś*Ŗ^ÑGĈĨ-}ĩSÂ;2šĒdOÊŐčĵçĹÿ<EçĩĞùØpĂķXđp÷ļE%8×ďĢVxÄÿ.Ĕ^sŎčÎĔĹŠĴŕàÿ7ĕčàĵæAzÎćTïŕĀÀŘāŖ",
+		"yellowConcrete": "0g0g4řĨHřęHřĨYŕęHlV01zs@S1àÁá?ħń4S9551ÿOÄúKV14ÁVÁN[lÃÆśÁllħħĬĨRļŗh(0oUVUV{Á{0SľQh",
+		"yellowWool": "0g0gjŝňZŝŘZŝĸYŝňYŢiHZ>WŢyYŢNZřĨHřĸYZÐZŞ2WŢ2WZÃHZÃYŢyHZNZZ>HŝřW0QNk0MķygPxüĊąØqSĜA$#ÄĮ*Œ:}GEōwKļXö2ŁĹ5ÁO0RĨ890yü]^0ķw122ĜëßÂô2hX!õĝEŖ8Uċāęowĺpę.ĹoĀ1aħJ$RaŋUxÓ1üĎt^ô}â)ōÖÄ>gQgcKXďo2Ñy@8ÀIĠ]x]âEİ.ĄĐĄô>eĽMĒàIĞùķÁSnĄz]yŘïĖK|hëĕ"
 	}
 }
 
@@ -6256,7 +6261,7 @@ const blockData = [
 		shadow: false,
 	},
 	{ name: "cobblestone" },
-	{ name: "mossyCobble" },
+	{ name: "mossyCobblestone" },
 	{ name: "stoneBricks" },
 	{ name: "mossyStoneBricks" },
 	{ name: "bricks" },
@@ -6277,32 +6282,32 @@ const blockData = [
 	{ name: "oakPlanks" },
 	{
 		name: "oakLog",
-		textures: ["logTop", "logSide"],
+		textures: ["oakLogTop", "oakLog"],
 	},
 	{ name: "acaciaPlanks" },
 	{
 		name: "acaciaLog",
-		textures: ["acaciaLogTop", "acaciaLogSide"],
+		textures: ["acaciaLogTop", "acaciaLog"],
 	},
 	{ name: "birchPlanks" },
 	{
 		name: "birchLog",
-		textures: ["birchLogTop", "birchLogSide"],
+		textures: ["birchLogTop", "birchLog"],
 	},
 	{ name: "darkOakPlanks" },
 	{
 		name: "darkOakLog",
-		textures: ["darkOakLogTop", "darkOakLogSide"],
+		textures: ["darkOakLogTop", "darkOakLog"],
 	},
 	{ name: "junglePlanks" },
 	{
 		name: "jungleLog",
-		textures: ["jungleLogTop", "jungleLogSide"],
+		textures: ["jungleLogTop", "jungleLog"],
 	},
 	{ name: "sprucePlanks" },
 	{
 		name: "spruceLog",
-		textures: ["spruceLogTop", "spruceLogSide"],
+		textures: ["spruceLogTop", "spruceLog"],
 	},
 	{ name: "whiteWool" },
 	{ name: "orangeWool" },
@@ -6371,13 +6376,14 @@ const blockData = [
 	{ name: "granite" },
 	{ name: "polishedGranite" },
 	{ name: "light", textures: "nothing", lightLevel: 15, solid: false, icon: "glass", transparent: true, shadow: false },
-	{ name: "water", semiTrans: true, transparent: true, solid: false, shadow: false}
+	{ name: "water", textures: "waterStill", semiTrans: true, transparent: true, solid: false, shadow: false},
+	{ name: "lava", textures: "lavaStill", lightLevel: 15, transparent: true, solid: false, shadow: false}
 	// I swear, if y'all don't stop asking about TNT every 5 minutes!
 	/* {
         name: "tnt",
-        textures: ["tntBottom", "tntTop", "tntSides"]
+        textures: ["tntBottom", "tntTop", "tntSide"]
     },*/
-];
+]
 
 const BLOCK_COUNT = blockData.length;
 
@@ -6446,6 +6452,111 @@ let Sides = {
 
 /***/ }),
 /* 16 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+__webpack_require__.r(__webpack_exports__);
+/* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "biomes", function() { return biomes; });
+/* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
+
+
+let biomes = [
+	{
+		"name": "river",
+		"temperature": "hardcoded",
+		"moisture": "hardcoded",
+		"elevation": "52",
+		"tallness": "16",
+		"roughness": "0.01",
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].sand, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].gravel, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "ocean",
+		"temperature": "hardcoded",
+		"moisture": "hardcoded",
+		"elevation": 32,
+		"tallness": 32,
+		"roughness": 0.001,
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].gravel, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "foothills",
+		"temperature": "hardcoded",
+		"moisture": "hardcoded",
+		"elevation": 72,
+		"tallness": 32,
+		"roughness": 0.001,
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].grass, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "mountains",
+		"temperature": "hardcoded",
+		"moisture": "hardcoded",
+		"elevation": 88,
+		"tallness": 64,
+		"roughness": 0.001,
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "peaks",
+		"temperature": "hardcoded",
+		"moisture": "hardcoded",
+		"elevation": 128,
+		"tallness": 128,
+		"roughness": 0.005,
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].whiteWool, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].whiteWool, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "plains",
+		"temperature": 0,
+		"moisture": -0.1,
+		"elevation": 64,
+		"tallness": 32,
+		"roughness": 0.0005,
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].grass, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "forest",
+		"temperature": 0,
+		"moisture": 0,
+		"elevation": 64,
+		"tallness": 64,
+		"roughness": 0.0025,
+		"trees": [1, 1, 1, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].grass, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "swamp",
+		"temperature": 0,
+		"moisture": 0.1,
+		"elevation": 50,
+		"tallness": 32,
+		"roughness": 0.001,
+		"trees": [1, 0, 0, 0, 0, 0, 1],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].grass, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].dirt, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	},
+	{
+		"name": "desert",
+		"temperature": 0.1,
+		"moisture": -0.1,
+		"elevation": 64,
+		"tallness": 16,
+		"roughness": 0.0005,
+		"trees": [0, 0, 0, 0, 0, 0, 0],
+		"pallette": [_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].sand, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].sand, _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].stone]
+	}
+];
+
+
+
+/***/ }),
+/* 17 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -6525,7 +6636,7 @@ async function deleteFromDB(id) {
 
 
 /***/ }),
-/* 17 */
+/* 18 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -6630,7 +6741,7 @@ let shapes = {
 
 
 /***/ }),
-/* 18 */
+/* 19 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -6690,7 +6801,7 @@ function vertexAttribPointer(gl, glCache, cacheId, programObj, vrName, size, VBO
 
 
 /***/ }),
-/* 19 */
+/* 20 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -6721,24 +6832,94 @@ function initTextures(gl, glCache) {
 		texturePixels[offset + 2] = b
 		texturePixels[offset + 3] = a !== undefined ? a : 255
 	}
-	const getPixels = function(str) {
-		// var w = parseInt(str.substr(0, 2), 36)
-		// var h = parseInt(str.substr(2, 2), 36)
-		var colors = []
-		var pixels = []
-		var dCount = 0
-		for (; str[4 + dCount] === "0"; dCount++);
-		var ccount = parseInt(str.substr(4 + dCount, dCount + 1), 36)
-		for (var i = 0; i < ccount; i++) {
-			var num = parseInt(str.substr(5 + 2 * dCount + i * 7, 7), 36)
-			colors.push([num >>> 24 & 255, num >>> 16 & 255, num >>> 8 & 255, num & 255])
+
+	const base256CharSet = '0123456789abcdefghijklmnopqrstuvwxyzABCDEF!#$%&L(MNO)*+,-./:;<=WSTR>Q?@[]P^_{|}~ÀÁÂÃUVÄÅÆÇÈÉÊËÌÍKÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãGäåæçèéêHëìíîXïðñIòóôõö÷øùúJûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦYħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťZ'
+	const base256DecodeMap = new Map()
+	for (let i = 0; i < 256; i++) base256DecodeMap.set(base256CharSet[i], i)
+	function decodeByte(str) {
+		let num = 0
+		for (let char of str) {
+			num <<= 8
+			num += base256DecodeMap.get(char)
 		}
-		for (let i = 5 + 2 * dCount + ccount * 7; i < str.length; i++) {
-			let num = parseInt(str[i], 36)
-			pixels.push(colors[num][0], colors[num][1], colors[num][2], colors[num][3])
+		return num
+	}
+
+	const getPixels = function(str, r = 255, g = 255, b = 255) {
+		if (Array.isArray(r)) {
+			[r, g, b] = r
+		}
+		const width = decodeByte(str.substr(0, 2))
+		const height = decodeByte(str.substr(2, 2))
+		const colorCount = decodeByte(str.substr(4, 1))
+		const colors = []
+		const pixels = new Uint8ClampedArray(width * height * 4)
+		let pixi = 0
+	
+		for (let i = 0; i < colorCount; i++) {
+			const num = decodeByte(str.substr(5 + i * 3, 3))
+	
+			let alpha = (num & 63) << 2
+			let blue  = (num >>> 6 & 63) << 2
+			let green = (num >>> 12 & 63) << 2
+			let red   = (num >>> 18 & 63) << 2
+			if (alpha >= 240) alpha = 255 // Make sure we didn't accidentally make the texture transparent
+	
+			if (red === blue && red === green) {
+				red = red / 252 * r | 0
+				green = green / 252 * g | 0
+				blue = blue / 252 * b | 0
+			}
+			colors.push([ red, green, blue, alpha ])
+		}
+	
+		// Special case for a texture filled with 1 pixel color
+		if (colorCount === 1) {
+			while (pixi < pixels.length) {
+				pixels[pixi + 0] = colors[0][0]
+				pixels[pixi + 1] = colors[0][1]
+				pixels[pixi + 2] = colors[0][2]
+				pixels[pixi + 3] = colors[0][3]
+				pixi += 4
+			}
+			return pixels
+		}
+	
+		let bytes = []
+		for (let i = 5 + colorCount * 3; i < str.length; i++) { // Load the bit-packed index array
+			const byte = decodeByte(str[i])
+			bytes.push(byte)
+		}
+	
+		const bits = Math.ceil(Math.log2(colorCount))
+		const bitMask = (1 << bits) - 1
+		let filledBits = 8
+		let byte = bytes.shift()
+		while (bytes.length || filledBits) {
+			let num = 0
+			if (filledBits >= bits) { // The entire number is inside the byte
+				num = byte >> (filledBits - bits) & bitMask
+				if (filledBits === bits && bytes.length) {
+					byte = bytes.shift()
+					filledBits = 8
+				}
+				else filledBits -= bits
+			}
+			else {
+				num = byte << (bits - filledBits) & bitMask // Only part of the number is in the byte
+				byte = bytes.shift() // Load in the next byte
+				num |= byte >> (8 - bits + filledBits) // Apply the rest of the number from this byte
+				filledBits += 8 - bits
+			}
+	
+			pixels[pixi + 0] = colors[num][0]
+			pixels[pixi + 1] = colors[num][1]
+			pixels[pixi + 2] = colors[num][2]
+			pixels[pixi + 3] = colors[num][3]
+			pixi += 4
 		}
 		return pixels
-	};
+	}
 
 	const textures = Object(_blockData_js__WEBPACK_IMPORTED_MODULE_0__["texturesFunc"])(setPixel, getPixels);
 
@@ -6755,17 +6936,19 @@ function initTextures(gl, glCache) {
 
 		// Set all of the textures into 1 big tiled texture
 		let n = 0
-		for (let i in textures) {
-			if (typeof textures[i] === "function") {
-				textures[i](n)
+		for (let name in textures) {
+			if (typeof textures[name] === "function") {
+				textures[name](n)
 			}
-			else if (typeof textures[i] === "string") {
-				let pix = getPixels(textures[i])
+			else if (typeof textures[name] === "string") {
+				let pix = name.includes("water") ?
+				getPixels(textures[name], 40, 100, 220) :
+				getPixels(textures[name])
 				for (let j = 0; j < pix.length; j += 4) {
 					setPixel(n, j >> 2 & 15, j >> 6, pix[j], pix[j+1], pix[j+2], pix[j+3])
 				}
 			}
-			textureMap[i] = n
+			textureMap[name] = n
 			n++
 		}
 
@@ -6806,7 +6989,7 @@ function initTextures(gl, glCache) {
 
 
 /***/ }),
-/* 20 */
+/* 21 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -6816,7 +6999,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "emptySection", function() { return emptySection; });
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "fullSection", function() { return fullSection; });
 /* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
-/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(19);
+/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(20);
 
 
 
@@ -6849,10 +7032,18 @@ let sphere;
 function carveSphere(x, y, z, world) {
 	if (y > 3) {
 		for (let i = 0; i < sphere.length; i += 3) {
-			world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].air, true)
+			if(world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2])!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water&&world.getBlock(x + sphere[i], y + sphere[i + 1] + 1, z + sphere[i + 2])!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water&&world.getBlock(x + sphere[i] + 1, y + sphere[i + 1], z + sphere[i + 2])!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water&&world.getBlock(x + sphere[i] - 1, y + sphere[i + 1], z + sphere[i + 2])!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water&&world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2] + 1)!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water&&world.getBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2] - 1)!==_blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].water){
+				if(y + sphere[i + 1]>7){
+					world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].air, true)
+				}
+				else{
+					world.setBlock(x + sphere[i], y + sphere[i + 1], z + sphere[i + 2], _blockData_js__WEBPACK_IMPORTED_MODULE_0__["blockIds"].lava, true)
+				}
+			}
 		}
 	}
 }
+
 
 /**
  * Returns a 1 if the face is exposed and should be drawn, or a 0 if the face is hidden
@@ -7473,7 +7664,7 @@ emptySection.light.fill(15)
 
 
 /***/ }),
-/* 21 */
+/* 22 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -7481,12 +7672,14 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Chunk", function() { return Chunk; });
 /* harmony import */ var _random_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(12);
 /* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(15);
-/* harmony import */ var _section_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(20);
+/* harmony import */ var _section_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(21);
+/* harmony import */ var _utils_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(14);
 
 
 
 
-const { floor, min, max } = Math;
+
+const { floor, min, max, round, sin, cos, abs } = Math;
 
 class Chunk {
 	constructor(x, z, world, glExtensions, gl, glCache, superflat, caves) {
@@ -7497,8 +7690,11 @@ class Chunk {
 		this.sections = []
 		this.cleanSections = []
 		this.tops = new Uint8Array(16 * 16) // Store the heighest block at every (x,z) coordinate
+		this.surfaces = []
+		this.surfaceBiomes = []
+		this.caveBiomes = []
 		this.optimized = false
-		this.generated = false; // Terrain
+		this.generated = false; // Terrain data
 		this.populated = superflat // Trees and ores
 		this.lit = false
 		this.lazy = false
@@ -7512,6 +7708,120 @@ class Chunk {
 		this.glCache = glCache
 		this.glExtensions = glExtensions
 		this.doubleRender = false
+	}
+	genChunk(superflat) {
+		let trueX = this.x
+		let trueZ = this.z
+
+		if (this.generated) {
+			return false
+		}
+
+		let temperature
+		let moisture
+		let height
+		let biome
+		let biomes
+		let groundBlocks = []
+		let soilDepth
+		let caveNoiseVal
+		let caveNoiseVal2
+		let caveNoiseVal3
+		let temperatureScale = 0.001
+		let moistureScale = 0.005
+		let minHeight = 40
+		let maxHeight = 240
+		let riverScale = 0.0018
+		let noiseVal
+		if (superflat === true) {
+			for (let i = 0; i < 16; i++) {
+				for (let k = 0; k < 16; k++) {
+					height = 4;
+					this.tops[k * 16 + i] = height;
+					this.setBlock(i, 0, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].bedrock);
+					for (let a = 1; a < height; a++) {
+						this.setBlock(i, a, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
+					}
+					this.setBlock(i, height, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass)
+				}
+			}
+		}
+		else {
+			for (let i = 0; i < 16; i++) {
+				for (let k = 0; k < 16; k++) {
+					//Find biome info
+					temperature = superflat ? 0 : (_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * temperatureScale, (trueZ + k) * temperatureScale, 16)-0.5)
+					moisture = superflat ? 0 : (_random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * moistureScale, (trueZ + k) * moistureScale, 17)-0.5)
+					temperature += Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(-0.001, 0.001)
+					moisture += Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(-0.001, 0.001)
+					biomes = Object(_utils_js__WEBPACK_IMPORTED_MODULE_3__["sortBiomes"])(temperature, moisture);
+					biome = biomes[0];
+					this.surfaceBiomes[k * 16 + i] = biome;
+					
+					//Interpolate biome properties
+					//biome.elevation = i1D(biomes[1].elevation, biomes[0].elevation, ((biomes[1].temperature - (temperature + 0.5)) + (biomes[1].moisture - (moisture + 0.5)))/2)
+					//biome.tallness = i1D(biomes[1].tallness, biomes[0].tallness, ((biomes[1].temperature - (temperature + 0.5)) + (biomes[1].moisture - (moisture + 0.5)))/2)
+					//biome.roughness = i1D(biomes[1].roughness, biomes[0].roughness, ((biomes[1].temperature - (temperature + 0.5)) + (biomes[1].moisture - (moisture + 0.5)))/2)
+					
+					//Generate height value
+					noiseVal = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i) * biome.roughness, (trueZ + k) * biome.roughness);
+					if(noiseVal>0.5){
+						noiseVal = 1 - noiseVal
+					}
+					noiseVal *= 2
+					
+					if (superflat === "amplified") {
+						height = noiseVal * biome.tallness * 4 + biome.elevation - 16;
+					}
+					else {
+						height = noiseVal * biome.tallness + biome.elevation;
+					}
+					
+					if(height > maxHeight){height = maxHeight;}
+					if(height < minHeight){height = minHeight;}
+					
+					this.tops[k * 16 + i] = floor(height);
+					
+					//Build the actual blocks
+					this.setBlock(i, 0, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].bedrock)
+					for (let j = 1; j < height + 1; j++) {
+						caveNoiseVal = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i)*0.01, j*0.01, (trueZ + k)*0.01);
+						caveNoiseVal2 = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i)*0.01, j*0.01+4, (trueZ + k)*0.01);
+						caveNoiseVal3 = _random_js__WEBPACK_IMPORTED_MODULE_0__["noiseProfile"].noise((trueX + i)*0.01, j*0.01-4, (trueZ + k)*0.01);
+						if(caveNoiseVal+caveNoiseVal2<sin((j+19)/24)&&caveNoiseVal3>0.5){
+							if(j < 8){
+								this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lava)
+							}
+						}
+						else{
+							this.setBlock(i, j, k, biome.pallette[2])
+						}
+					}
+					this.setBlock(i, 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone)
+					
+					
+					soilDepth = floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(2, 4));
+					
+					//biome is an object containing data from utils.js, biome definitions should be written there. DO NOT EDIT THIS FILE (chunk.js) UNLESS YOU HAVE TO
+					groundBlocks[0] = biome.pallette[0];
+					for(let a = 1; a < soilDepth; a++) {
+						groundBlocks[a] = biome.pallette[1];
+					}
+					
+					for(let j = height + 1; j < 64; j++) {
+						this.setBlock(i, j, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
+					}
+					
+					if (height > minHeight) {
+						for (let a = 0; a < groundBlocks.length; a++) {
+							if (this.getBlock(i, height + 1 - a, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].air||this.getBlock(i, height + 1 - a, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water) break
+							this.setBlock(i, height + 1 - a, k, groundBlocks[a])
+						}
+					}
+				}
+			}
+		}
+		this.generated = true
 	}
 	getBlock(x, y, z) {
 		let s = y >> 4
@@ -7540,7 +7850,7 @@ class Chunk {
 		let max = this.sections.length * 16 - 1
 		let blockSpread = []
 
-		// Set virtical columns of light to level 15
+		// Set vertical columns of light to level 15
 		for (let x = 0; x < 16; x++) {
 			for (let z = 0; z < 16; z++) {
 				let stop = false
@@ -7562,7 +7872,7 @@ class Chunk {
 			}
 		}
 
-		// Spread the light to places where the virtical columns stopped earlier, plus chunk borders
+		// Spread the light to places where the vertical columns stopped earlier, plus chunk borders
 		let spread = []
 		for (let x = 0; x < 16; x++) {
 			for (let z = 0; z < 16; z++) {
@@ -7627,8 +7937,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i+1]
-			z = blocks[i+2]
+			y = blocks[i + 1]
+			z = blocks[i + 2]
 			this.trySpread(x - 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x + 1, y, z, level, spread, blockLight, update)
 			this.trySpread(x, y - 1, z, level, spread, blockLight, update)
@@ -7665,8 +7975,8 @@ class Chunk {
 		let x = 0, y = 0, z = 0
 		for (let i = 0; i < blocks.length; i += 3) {
 			x = blocks[i]
-			y = blocks[i+1]
-			z = blocks[i+2]
+			y = blocks[i + 1]
+			z = blocks[i + 2]
 			this.tryUnSpread(x - 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x + 1, y, z, level, spread, respread, blockLight)
 			this.tryUnSpread(x, y - 1, z, level, spread, respread, blockLight)
@@ -7685,8 +7995,8 @@ class Chunk {
 			let spread = respread[level]
 			for (let j = 0; j < blocks.length; j += 3) {
 				let x = blocks[j]
-				let y = blocks[j+1]
-				let z = blocks[j+2]
+				let y = blocks[j + 1]
+				let z = blocks[j + 2]
 				this.trySpread(x - 1, y, z, level, spread, blockLight)
 				this.trySpread(x + 1, y, z, level, spread, blockLight)
 				this.trySpread(x, y - 1, z, level, spread, blockLight)
@@ -7752,19 +8062,101 @@ class Chunk {
 	populate(trees) {
 		const { world } = this
 		Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["randomSeed"])(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["hash"])(this.x, this.z) * 210000000)
-		let wx = 0, wz = 0, ground = 0, top = 0, rand = 0, place = false
-
+		let wx = 0, wz = 0, ground = 0, biome, top = 0, rand = 0, place = false
 		for (let i = 0; i < 16; i++) {
 			for (let k = 0; k < 16; k++) {
 				wx = this.x + i
 				wz = this.z + k
-
+				
 				ground = this.tops[k * 16 + i]
-				if (trees && Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.005 && this.getBlock(i, ground, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass) {
+				biome = this.surfaceBiomes[k * 16 + i]
+				
+				if (biome === 'swamp' && world.getBlock(wx + 1, ground, wz) && world.getBlock(wx - 1, ground, wz) && world.getBlock(wx, ground, wz + 1) && world.getBlock(wx, ground, wz - 1)) {
+					this.setBlock(i, ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
+					if(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])()>0.5){
+						this.setBlock(i, ground - 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].water)
+					}
+				}
+				
+				if (trees && Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.005 && this.getBlock(i, ground, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass && ground > 75 && biome === 'forest') {
 
 					top = ground + floor(4.5 + Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(2.5))
 					rand = floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(4096))
 					let tree = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.6 ? _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].oakLog : ++top && _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].birchLog
+
+					//Center
+					for (let j = ground + 1; j <= top; j++) {
+						this.setBlock(i, j, k, tree)
+					}
+					this.setBlock(i, top + 1, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					this.setBlock(i, ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].dirt)
+
+					//Bottom leaves
+					for (let x = -2; x <= 2; x++) {
+						for (let z = -2; z <= 2; z++) {
+							if (x || z) {
+								if ((x * z & 7) === 4) {
+									place = rand & 1
+									rand >>>= 1
+									if (place) {
+										world.spawnBlock(wx + x, top - 2, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+									}
+								}
+								else {
+									world.spawnBlock(wx + x, top - 2, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+								}
+							}
+						}
+					}
+
+					//2nd layer leaves
+					for (let x = -2; x <= 2; x++) {
+						for (let z = -2; z <= 2; z++) {
+							if (x || z) {
+								if ((x * z & 7) === 4) {
+									place = rand & 1
+									rand >>>= 1
+									if (place) {
+										world.spawnBlock(wx + x, top - 1, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+									}
+								}
+								else {
+									world.spawnBlock(wx + x, top - 1, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+								}
+							}
+						}
+					}
+
+					//3rd layer leaves
+					for (let x = -1; x <= 1; x++) {
+						for (let z = -1; z <= 1; z++) {
+							if (x || z) {
+								if (x & z) {
+									place = rand & 1
+									rand >>>= 1
+									if (place) {
+										world.spawnBlock(wx + x, top, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+									}
+								}
+								else {
+									world.spawnBlock(wx + x, top, wz + z, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+								}
+							}
+						}
+					}
+
+					//Top leaves
+					world.spawnBlock(wx + 1, top + 1, wz, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					world.spawnBlock(wx, top + 1, wz - 1, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					world.spawnBlock(wx, top + 1, wz + 1, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+					world.spawnBlock(wx - 1, top + 1, wz, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].leaves)
+				}
+
+				if (trees && Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.005 && this.getBlock(i, ground, k) === _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].grass && ground > 75 && biome === 'jungle') {
+
+					top = ground + floor(4.5 + Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(2.5))
+					rand = floor(Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])(4096))
+					let tree = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 0.7 ? _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].jungleLog : ++top && _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].oakLog
 
 					//Center
 					for (let j = ground + 1; j <= top; j++) {
@@ -7846,7 +8238,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 3.7 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].diamondOre)
 					}
 				}
@@ -7854,7 +8246,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 111.5 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 64 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].ironOre)
 					}
 				}
@@ -7862,7 +8254,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 185.5 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * ground | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].coalOre)
 					}
 				}
@@ -7870,7 +8262,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 10.4 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].goldOre)
 					}
 				}
@@ -7878,7 +8270,7 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 29.1 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 16 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].redstoneOre)
 					}
 				}
@@ -7886,13 +8278,24 @@ class Chunk {
 				if (Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() < 4.1 / 256) {
 					let y = Object(_random_js__WEBPACK_IMPORTED_MODULE_0__["random"])() * 32 | 0 + 1
 					y = y < ground ? y : ground
-					if (this.getBlock(i, y, k)) {
+					if (this.getBlock(i, y, k)===_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].stone) {
 						this.setBlock(i, y < ground ? y : ground, k, _blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockIds"].lapisOre)
 					}
 				}
+				for(let j = 1; j < ground + 1; j++){
+					if(!_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockData"][this.getBlock(i, j, k)].solid&&_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockData"][this.getBlock(i, j - 1, k)].solid){
+						this.surfaces.push([i, j, k]);
+					}
+					if(_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockData"][this.getBlock(i, j, k)].solid&&!_blockData_js__WEBPACK_IMPORTED_MODULE_1__["blockData"][this.getBlock(i, j - 1, k)].solid){
+						this.surfaces.push([i, j, k, true]);
+					}
+				}
+				/*for(let a = 0; a < this.surfaces.length; a++) {
+					if(this.surfaces[a][3]){this.setBlock(this.surfaces[a][0], this.surfaces[a][1], this.surfaces[a][2], blockIds.orangeWool)}
+					else{this.setBlock(this.surfaces[a][0], this.surfaces[a][1], this.surfaces[a][2], blockIds.blueWool)}
+				}*/
 			}
 		}
-
 		this.populated = true
 	}
 	genMesh(indexBuffer, bigArray) {
@@ -7968,15 +8371,15 @@ class Chunk {
 
 
 /***/ }),
-/* 22 */
+/* 23 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Item", function() { return Item; });
 /* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
-/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(19);
-/* harmony import */ var _entity_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(23);
+/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(20);
+/* harmony import */ var _entity_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(24);
 
 
 
@@ -8020,7 +8423,7 @@ class Item extends _entity_js__WEBPACK_IMPORTED_MODULE_2__["Entity"] {
 
 
 /***/ }),
-/* 23 */
+/* 24 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -8029,7 +8432,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
 /* harmony import */ var _utils_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(14);
 /* harmony import */ var _3Dutils_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(13);
-/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(19);
+/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(20);
 
 
 
@@ -8340,16 +8743,16 @@ class Entity {
 
 
 /***/ }),
-/* 24 */
+/* 25 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 __webpack_require__.r(__webpack_exports__);
 /* harmony export (binding) */ __webpack_require__.d(__webpack_exports__, "Player", function() { return Player; });
 /* harmony import */ var _blockData_js__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(15);
-/* harmony import */ var _shapes_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(17);
-/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(19);
-/* harmony import */ var _entity_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(23);
+/* harmony import */ var _shapes_js__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(18);
+/* harmony import */ var _texture_js__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(20);
+/* harmony import */ var _entity_js__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(24);
 
 
 

@@ -2898,7 +2898,12 @@ async function MineKhan() {
 		Button.add(width / 2, height / 2 + 90, 400, 40, "Options", "main menu", () => changeScene("options"))
 
 		// Creation menu buttons
-		Button.add(width / 2, 135, 300, 40, ["World Type: Normal", "World Type: Superflat"], "creation menu", r => superflat = r === "World Type: Superflat")
+		Button.add(width / 2, 135, 300, 40, ["World Type: Normal", "World Type: Superflat", "World Type: Amplified"], "creation menu", r => function() {
+			superflat = r === "World Type: Superflat"
+			if(r === "World Type: Amplified"){
+				superflat = "amplified"
+			}
+		})
 		Button.add(width / 2, 185, 300, 40, ["Trees: On", "Trees: Off"], "creation menu", r => trees = r === "Trees: On", function() {
 			if (superflat) {
 				this.index = 1
