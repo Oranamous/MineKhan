@@ -1,5 +1,6 @@
 import { blockData, blockIds, Block, Sides } from "./blockData.js"
 import { textureMap, textureCoords } from "./texture.js"
+import { Generator } from "./generator.js"
 
 function getBlock(x, y, z, blocks) {
 	return blocks[((x >> 4) + 1) * 9 + ((y >> 4) + 1) * 3 + (z >> 4) + 1][((x & 15) << 8) + ((y & 15) << 4) + (z & 15)]
@@ -366,6 +367,7 @@ class Section {
 		this.palleteMap = { "0": 0 }
 		this.palleteSize = 0
 		this.world = world
+		this.generator = new Generator()
 	}
 	getBlock(x, y, z) {
 		let s = this.size
@@ -500,6 +502,7 @@ class Section {
 		let shapeVerts = null
 		let shapeTexVerts = null
 		let pallete = this.pallete
+		let tint
 		// let intShad = interpolateShadows
 
 		for (let i = 0; i < length; i++) {
@@ -515,7 +518,22 @@ class Section {
 			x2 = x + this.x
 			y2 = y + this.y
 			z2 = z + this.z
-
+			
+			let temperature = this.generator.temperature(x2, z2) / 2 + 0.5
+			let material = 1.0
+			switch(this.getBlock(x, y, z)) {
+				case blockIds.grass:
+					material = 2.0
+				break;
+				case blockIds.leaves:
+					material = 3.0
+				break;
+				case blockIds.water:
+				case blockIds.lava:
+					material = 4.0
+				break;
+			}
+			
 			shapeVerts = block.shape.verts
 			shapeTexVerts = block.shape.texVerts
 
@@ -542,34 +560,42 @@ class Section {
 						barray[index+5] = shadows[0]
 						barray[index+6] = slights[0]
 						barray[index+7] = blights[0]
+						barray[index+8] = temperature
+						barray[index+9] = material
 
-						barray[index+8] = verts[3] + x2
-						barray[index+9] = verts[4] + y2
-						barray[index+10] = verts[5] + z2
-						barray[index+11] = tx + texShapeVerts[2]
-						barray[index+12] = ty + texShapeVerts[3]
-						barray[index+13] = shadows[1]
-						barray[index+14] = slights[1]
-						barray[index+15] = blights[1]
+						barray[index+10] = verts[3] + x2
+						barray[index+11] = verts[4] + y2
+						barray[index+12] = verts[5] + z2
+						barray[index+13] = tx + texShapeVerts[2]
+						barray[index+14] = ty + texShapeVerts[3]
+						barray[index+15] = shadows[1]
+						barray[index+16] = slights[1]
+						barray[index+17] = blights[1]
+						barray[index+18] = temperature
+						barray[index+19] = material
 
-						barray[index+16] = verts[6] + x2
-						barray[index+17] = verts[7] + y2
-						barray[index+18] = verts[8] + z2
-						barray[index+19] = tx + texShapeVerts[4]
-						barray[index+20] = ty + texShapeVerts[5]
-						barray[index+21] = shadows[2]
-						barray[index+22] = slights[2]
-						barray[index+23] = blights[2]
+						barray[index+20] = verts[6] + x2
+						barray[index+21] = verts[7] + y2
+						barray[index+22] = verts[8] + z2
+						barray[index+23] = tx + texShapeVerts[4]
+						barray[index+24] = ty + texShapeVerts[5]
+						barray[index+25] = shadows[2]
+						barray[index+26] = slights[2]
+						barray[index+27] = blights[2]
+						barray[index+28] = temperature
+						barray[index+29] = material
 
-						barray[index+24] = verts[9] + x2
-						barray[index+25] = verts[10] + y2
-						barray[index+26] = verts[11] + z2
-						barray[index+27] = tx + texShapeVerts[6]
-						barray[index+28] = ty + texShapeVerts[7]
-						barray[index+29] = shadows[3]
-						barray[index+30] = slights[3]
-						barray[index+31] = blights[3]
-						index += 32
+						barray[index+30] = verts[9] + x2
+						barray[index+31] = verts[10] + y2
+						barray[index+32] = verts[11] + z2
+						barray[index+33] = tx + texShapeVerts[6]
+						barray[index+34] = ty + texShapeVerts[7]
+						barray[index+35] = shadows[3]
+						barray[index+36] = slights[3]
+						barray[index+37] = blights[3]
+						barray[index+38] = temperature
+						barray[index+39] = material
+						index += 40
 					}
 				}
 				texNum++

@@ -5,9 +5,9 @@ const texturesFunc = function (setPixel, getPixels) {
 				for (let y = 0; y < 16; ++y) {
 					const d = Math.random() * 0.25 + 0.65
 
-					const r = 0x54 * d
-					const g = 0xa0 * d
-					const b = 0x48 * d
+					const r = 0x88 * d
+					const g = 0x88 * d
+					const b = 0x88 * d
 
 					setPixel(n, x, y, r, g, b)
 				}
@@ -27,9 +27,9 @@ const texturesFunc = function (setPixel, getPixels) {
 				const m = random() * 4 + 1
 				for (let y = 0; y < m; ++y) {
 					const d = random() * 0.25 + 0.65
-					const r = 0x54 * d
-					const g = 0xa0 * d
-					const b = 0x48 * d
+					const r = 0x88 * d
+					const g = 0x88 * d
+					const b = 0x88 * d
 					setPixel(n, x, y, r, g, b)
 				}
 			}
@@ -39,9 +39,10 @@ const texturesFunc = function (setPixel, getPixels) {
 
 			for (let x = 0; x < 16; ++x) {
 				for (let y = 0; y < 16; ++y) {
-					const r = 0
-					const g = floor(random() * 30 + 100)
-					const b = floor(random() * 30)
+					const d = random() * 0.25 + 0.65
+					const r = 0x88 * d
+					const g = 0x88 * d
+					const b = 0x88 * d
 					const a = random() < 0.35 ? 0x0 : 0xff
 
 					setPixel(n, x, y, r, g, b, a)

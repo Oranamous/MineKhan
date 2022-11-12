@@ -194,7 +194,8 @@ async function MineKhan() {
 	let settings = {
 		renderDistance: 4,
 		fov: 70, // Field of view in degrees
-		mouseSense: 100 // Mouse sensitivity as a percentage of the default
+		mouseSense: 100, // Mouse sensitivity as a percentage of the default
+		nightVision: false // Mouse sensitivity as a percentage of the default
 	}
 	let generatedChunks
 	let mouseX, mouseY, mouseDown
@@ -799,7 +800,7 @@ async function MineKhan() {
 	let sideEdgeBuffers
 	let indexBuffer
 
-	let matrix = new Float32Array(16); // A temperary matrix that may store random data.
+	let matrix = new Float32Array(16); // A temporary matrix that may store random data.
 	let projection = new Float32Array(16)
 	let defaultModelView = new Float32Array([-10,0,0,0,0,10,0,0,0,0,-10,0,0,0,0,1])
 
@@ -1466,6 +1467,7 @@ async function MineKhan() {
 	}
 
 	function box2(sides, tex) {
+		gl.uniform1f(glCache.uAnimation, 0.0)
 		if (blockFill) {
 			let i = 0
 			for (let side in Block) {
@@ -2271,7 +2273,7 @@ async function MineKhan() {
 				if (this.meshQueue.length) {
 					// Update all chunk meshes.
 					do {
-						this.meshQueue.pop().genMesh(indexBuffer, bigArray)
+						this.meshQueue.pop().genMesh(indexBuffer, bigArray, settings)
 					} while(this.meshQueue.length)
 					doneWork = true
 					debug("Meshes")
@@ -2318,7 +2320,7 @@ async function MineKhan() {
 						debug("Optimize")
 					}
 					else if (!chunk.buffer) {
-						chunk.genMesh(indexBuffer, bigArray)
+						chunk.genMesh(indexBuffer, bigArray, settings)
 						debug("Initial mesh")
 					}
 					else {
@@ -2336,12 +2338,14 @@ async function MineKhan() {
 		render() {
 			initModelView(p)
 			let skyLight
+			let gameTime
 			if (multiplayer) {
 				skyLight = min(max(abs(now % 1200000 - 600000) / 60000 - 3, 0.1), 1)
 			}
 			else {
 				skyLight = min(max(abs(++frameCount % 7200 - 3600) / 360 - 3, 0.1), 1)
 			}
+			gameTime = frameCount * 0.05
 			gl.clearColor(sky[0] * skyLight, sky[1] * skyLight, sky[2] * skyLight, 1)
 			gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT)
 
@@ -2368,6 +2372,7 @@ async function MineKhan() {
 			// if you are going to change this to use actual time change line 4487 as well
 			// since it depends on it
 			gl.uniform1f(glCache.uTime, skyLight)
+			gl.uniform1f(glCache.uTicks, gameTime)
 
 			let c = this.sortedChunks
 			let glob = { renderedChunks };
@@ -3040,7 +3045,8 @@ async function MineKhan() {
 		})
 
 		// Options buttons
-		Button.add(width / 2, 455, width / 3, 40, "Back", "options", () => changeScene(previousScreen))
+		Button.add(width / 2, 425, width / 3, 40, ["Night Vision: Off", "Night Vision: On"], "options", r => settings.nightVision = r === "Night Vision: On")
+		Button.add(width / 2, 515, width / 3, 40, "Back", "options", () => changeScene(previousScreen))
 
 		// Comingsoon menu buttons
 		Button.add(width / 2, 395, width / 3, 40, "Back", "comingsoon menu", () => changeScene(previousScreen))
@@ -3081,8 +3087,13 @@ async function MineKhan() {
 		gl.vertexAttribPointer(glCache.aShadow, 1, gl.FLOAT, false, 24, 20)
 		gl.disableVertexAttribArray(glCache.aSkylight)
 		gl.disableVertexAttribArray(glCache.aBlocklight)
+		gl.disableVertexAttribArray(glCache.aTemperature)
+		gl.disableVertexAttribArray(glCache.aMaterial)
 		gl.vertexAttrib1f(glCache.aSkylight, 1.0)
 		gl.vertexAttrib1f(glCache.aBlocklight, 1.0)
+		gl.vertexAttrib1f(glCache.aTemperature, 0.0)
+		gl.vertexAttrib1f(glCache.aMaterial, 1.0)
+		gl.uniform1f(glCache.uAnimation, 0.0)
 		gl.drawElements(gl.TRIANGLES, blockIcons.lengths[id], gl.UNSIGNED_INT, 0)
 	}
 
@@ -3608,6 +3619,8 @@ async function MineKhan() {
 		gl.disableVertexAttribArray(glCache.aVertex)
 		gl.disableVertexAttribArray(glCache.aSkylight)
 		gl.disableVertexAttribArray(glCache.aBlocklight)
+		gl.disableVertexAttribArray(glCache.aTemperature)
+		gl.disableVertexAttribArray(glCache.aMaterial)
 		gl.useProgram(program2D)
 
 		gl.enableVertexAttribArray(glCache.aVertex2)
@@ -3625,6 +3638,8 @@ async function MineKhan() {
 		gl.enableVertexAttribArray(glCache.aShadow)
 		gl.enableVertexAttribArray(glCache.aSkylight)
 		gl.enableVertexAttribArray(glCache.aBlocklight)
+		gl.enableVertexAttribArray(glCache.aTemperature)
+		gl.enableVertexAttribArray(glCache.aMaterial)
 	}
 
 	let maxLoad = 1
@@ -3694,11 +3709,15 @@ async function MineKhan() {
 		glCache.uPos = gl.getUniformLocation(program3D, "uPos")
 		glCache.uDist = gl.getUniformLocation(program3D, "uDist")
 		glCache.uTime = gl.getUniformLocation(program3D, "uTime")
+		glCache.uTicks = gl.getUniformLocation(program3D, "uTicks")
 		glCache.uSky = gl.getUniformLocation(program3D, "uSky")
 		glCache.uTrans = gl.getUniformLocation(program3D, "uTrans")
+		glCache.uAnimation = gl.getUniformLocation(program3D, "uAnimation")
 		glCache.aShadow = gl.getAttribLocation(program3D, "aShadow")
 		glCache.aSkylight = gl.getAttribLocation(program3D, "aSkylight")
 		glCache.aBlocklight = gl.getAttribLocation(program3D, "aBlocklight")
+		glCache.aTemperature = gl.getAttribLocation(program3D, "aTemperature")
+		glCache.aMaterial = gl.getAttribLocation(program3D, "aMaterial")
 		glCache.aTexture = gl.getAttribLocation(program3D, "aTexture")
 		glCache.aVertex = gl.getAttribLocation(program3D, "aVertex")
 
@@ -3754,9 +3773,14 @@ async function MineKhan() {
 		gl.disableVertexAttribArray(glCache.aShadow)
 		gl.disableVertexAttribArray(glCache.aSkylight)
 		gl.disableVertexAttribArray(glCache.aBlocklight)
+		gl.disableVertexAttribArray(glCache.aTemperature)
+		gl.disableVertexAttribArray(glCache.aMaterial)
 		gl.vertexAttrib1f(glCache.aShadow, 1.0)
 		gl.vertexAttrib1f(glCache.aSkylight, 1.0)
 		gl.vertexAttrib1f(glCache.aBlocklight, 1.0)
+		gl.vertexAttrib1f(glCache.aTemperature, 0.0)
+		gl.vertexAttrib1f(glCache.aMaterial, 1.0)
+		gl.uniform1f(glCache.uAnimation, 0.0)
 
 		{
 			const blocks = Int8Array.of(
